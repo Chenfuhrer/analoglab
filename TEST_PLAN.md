@@ -1,0 +1,40 @@
+# TEST PLAN
+
+## 1. 计算测试（Vitest，`src/**/*.test.ts`）
+
+| 模块 | 用例 | 参考来源 |
+|------|------|---------|
+| `units` | SI 前缀解析（p/n/µ/u/m/k/M）、中文单位（千欧/毫安/微安/毫伏）、量纲识别、格式化 | 手工 |
+| `bjt/dc` 固定偏置 | V_CC=12 V, R_b=565 kΩ, R_c=3 kΩ, β=100 → I_BQ=20 µA, I_CQ=2 mA, U_CEQ=6 V | 手工推导 |
+| `bjt/dc` 分压偏置 | V_CC=12 V, R_b1=5 kΩ(下), R_b2=25 kΩ(上), R_c=5 kΩ, R_e1=0.3 kΩ, R_e2=1 kΩ, β=100 → 估算法 U_BQ=2 V, I_EQ=1 mA, U_CEQ=5.7 V；戴维南精确解另行手算 | 手工推导 + 教材型例题参考答案交叉核对 |
+| `bjt/dc` 工作区 | V_BB<U_BEQ → 截止；R_b 过小 → 饱和且 U_CE=U_CES、I_C<βI_B；边界附近连续 | 手工 |
+| `bjt/ac` | r_be、A_u、R_i、R_o、A_us；有/无 R_L；C_e 有/无；R_e 部分旁路 | 手工推导 |
+| `bjt/ac` 最大不失真输出 | U_om = min(U_CEQ−U_CES, I_CQ R_L')，含 R_e,ac 修正 | 手工推导 |
+| `bjt/transient` | ①小信号（0.1 mV）下峰值增益 → A_u（误差<1%）；②u_s=0 时输出恒等于 Q 点；③大输入时截止削波上限 → I_CQ·R_L'；④饱和削波 u_CE ≥ U_CES；⑤相位差 ≈ 180° | 与 `bjt/ac` 交叉验证 |
+| `bjt/characteristics` | 大 u_CE 时 i_C → β i_B；u_CE=0.3 V 时 > 0.99 β i_B；单调 | 解析式 |
+| `exercises/grader` | 正确值、量纲错、缺单位、前缀错 1000 倍、符号错、常见错误公式匹配 | 手工 |
+| `exercises/generators` | 每个生成器 200 个随机种子：Q 点处于放大区、答案有限、与计算核心一致、种子可复现 | 自动 |
+
+## 2. 功能测试（Playwright，`tests/e2e/*.spec.ts`）
+- 页面导航：首页 → 课程目录 → 共射课程 → 实验室 → 练习 → 错题本 → 进度 → 公式 → 图谱。
+- 参数输入：修改 R_b 后 I_BQ/U_CEQ 读数变化；进入饱和区时状态徽标变为“饱和”。
+- 电路模式切换：完整/直流/交流/微变四个模式按钮，`data-mode` 属性与元件状态（电容开路/短路、V_CC 交流接地、BJT 替换为 r_be + βi_b）。
+- 波形更新：输入幅度增大 → 峰值读数变化、失真提示出现。
+- 练习提交：正确答案判对；缺单位提示；错题自动进入错题本。
+- 学习进度保存：标记知识点完成后刷新页面仍保留。
+
+## 3. UI 测试
+- 桌面（1440×900）三栏布局；平板（768）右栏收起；手机（375）左栏抽屉。
+- 深色模式切换并持久化。
+- KaTeX 公式渲染无错误（页面中无 `.katex-error`）。
+- 电路图缩放/重置按钮改变 viewBox。
+- 布局碰撞检查（layout-collision-checker）：0 个严重碰撞。
+
+## 4. 执行
+```bash
+npm test
+npm run typecheck && npm run lint
+npm run build && npm run build:static
+npm run test:e2e
+```
+结果记录在 `PROGRESS.md` 的“测试结果”一节。
