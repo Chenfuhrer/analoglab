@@ -2,6 +2,7 @@
  * Level 1 概念题（原创）。考点参考了常见期末题型的分布，题干与选项为本项目自行编写。
  */
 import { GENERATORS } from "./generators";
+import { CHAPTER_TEMPLATES } from "./chapters";
 import type { Level, Question, QuestionTemplate } from "./types";
 
 function choice(
@@ -220,7 +221,7 @@ export const STATIC_QUESTIONS: QuestionTemplate[] = [
   ),
 ];
 
-export const ALL_TEMPLATES: QuestionTemplate[] = [...STATIC_QUESTIONS, ...GENERATORS];
+export const ALL_TEMPLATES: QuestionTemplate[] = [...STATIC_QUESTIONS, ...GENERATORS, ...CHAPTER_TEMPLATES];
 
 export const TEMPLATE_BY_ID: Record<string, QuestionTemplate> = Object.fromEntries(ALL_TEMPLATES.map((t) => [t.id, t]));
 

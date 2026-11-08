@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CHAPTERS, UNIT_BY_ID, unitsOfChapter } from "@/content/course";
+import { CHAPTERS, UNITS, UNIT_BY_ID, unitsOfChapter } from "@/content/course";
 import { Workspace } from "@/components/layout/Workspace";
 import { PageContext } from "@/components/layout/PageContext";
 import { UnitProgress } from "@/components/learn/UnitProgress";
@@ -15,7 +15,7 @@ export default function LearnPage() {
         <div className="eyebrow">COURSE MAP</div>
         <h1 className="font-display mt-1 text-[30px] font-bold">课程目录</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">
-          按《模拟电子技术基础》（童诗白、华成英）的常见教学顺序组织为 12 章。已上线的单元包含完整讲解、交互实验与练习；其余单元列出学习目标与先修关系，不提供空壳页面。
+          按《模拟电子技术基础》（童诗白、华成英）的常见教学顺序组织为 12 章、{UNITS.length} 个单元。每个单元都包含完整讲解（物理直觉 → 概念 → 电路分析 → 推导 → 可视化 → 例题 → 总结）、由计算核心驱动的交互实验和三级练习。
         </p>
       </header>
       <ol className="space-y-8">

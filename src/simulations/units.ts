@@ -3,7 +3,7 @@
  * 所有内部计算使用 SI 基本单位（V、A、Ω、W、Hz、F、s）。
  */
 
-export type Dim = "V" | "A" | "Ω" | "W" | "Hz" | "F" | "s" | "1" | "dB";
+export type Dim = "V" | "A" | "Ω" | "W" | "Hz" | "F" | "H" | "s" | "1" | "dB";
 
 export const DIM_NAME: Record<Dim, string> = {
   V: "电压 (V)",
@@ -12,6 +12,7 @@ export const DIM_NAME: Record<Dim, string> = {
   W: "功率 (W)",
   Hz: "频率 (Hz)",
   F: "电容 (F)",
+  H: "电感 (H)",
   s: "时间 (s)",
   "1": "无量纲",
   dB: "分贝 (dB)",
@@ -61,6 +62,9 @@ const UNIT_ALIASES: Array<[string, Dim, number]> = [
   ["秒", "s", 1],
   ["分贝", "dB", 1],
   ["倍", "1", 1],
+  ["亨", "H", 1],
+  ["%", "1", 0.01],
+  ["％", "1", 0.01],
   // 英文/符号
   ["ohms", "Ω", 1],
   ["ohm", "Ω", 1],
@@ -75,6 +79,7 @@ const UNIT_ALIASES: Array<[string, Dim, number]> = [
   ["A", "A", 1],
   ["W", "W", 1],
   ["F", "F", 1],
+  ["H", "H", 1],
   ["s", "s", 1],
 ];
 

@@ -44,7 +44,7 @@ export function CourseNav() {
           <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-2 text-[11.5px] leading-snug text-ink-3">
-          已上线 {completeCount} 个完整单元 · 其余单元显示学习目标（规划中）
+          {completeCount === UNITS.length ? `全部 ${completeCount} 个单元已上线` : `已上线 ${completeCount} 个完整单元 · 其余单元显示学习目标（规划中）`}
         </p>
       </div>
 

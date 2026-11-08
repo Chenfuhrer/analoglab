@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CESchematicStatic } from "@/components/circuit/CESchematicStatic";
+import { Diagram } from "@/components/circuit/diagrams";
 import { Derivation } from "@/components/math/Derivation";
 import { Rich } from "@/components/math/Tex";
 import { Badge, Button, cx } from "@/components/ui/primitives";
@@ -129,6 +130,7 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
           <Rich text={q.prompt} />
         </div>
         {q.figure && !compact && <CESchematicStatic params={q.figure.params} mode={q.figure.mode} caption={q.figure.caption} />}
+        {q.diagram && !compact && <Diagram {...q.diagram} />}
 
         {/* 作答区 */}
         {q.body.kind === "numeric" && (

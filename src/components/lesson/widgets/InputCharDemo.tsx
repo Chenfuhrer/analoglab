@@ -1,5 +1,7 @@
 "use client";
 
+import { r } from "@/components/math/Tex";
+
 import { useMemo, useState } from "react";
 import { inputCurrent } from "@/simulations/bjt/characteristics";
 import { formatSI, sig } from "@/simulations/units";
@@ -69,7 +71,7 @@ export function InputCharDemo({ showTangentDefault = false, initialBias = 0.7, i
           </div>
           <p className="text-[12.5px] leading-snug text-ink-2" data-testid="icd-verdict">
             {cutoff ? (
-              <Rich text="没有偏置：发射结远未导通，绝大部分时间 $i_B\approx0$——信号根本“进不去”。" />
+              <Rich text={r`没有偏置：发射结远未导通，绝大部分时间 $i_B\approx0$——信号根本“进不去”。`} />
             ) : asym > 0.2 ? (
               <Rich text={`幅值已与 $U_T=26\\,\\mathrm{mV}$ 可比：$i_B$ 上下摆动明显不对称（不对称度 ${sig(asym * 100, 2)}%），切线近似失效。`} />
             ) : asym > 0.05 ? (

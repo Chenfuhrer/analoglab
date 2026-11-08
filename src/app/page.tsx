@@ -79,8 +79,11 @@ export default function Home() {
             AnalogLab 是面向电子信息类本科生的《模拟电子技术基础》交互式学习平台。每一个波形、每一个工作点都由经过测试的电路模型实时计算——你改的每个电阻，都会真实地改变结果。
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/learn/ce-amplifier" className="rounded-lg bg-accent px-5 py-2.5 text-[14.5px] font-medium text-accent-ink hover:opacity-90" data-testid="cta-learn">
-              开始学习：共射极放大电路 →
+            <Link href="/learn/semi-carriers" className="rounded-lg bg-accent px-5 py-2.5 text-[14.5px] font-medium text-accent-ink hover:opacity-90" data-testid="cta-learn">
+              从第 1 章开始学习 →
+            </Link>
+            <Link href="/learn/ce-amplifier" className="rounded-lg border border-line bg-elev px-5 py-2.5 text-[14.5px] font-medium hover:border-ink-3">
+              直接看共射放大电路
             </Link>
             <Link href="/lab/ce-amplifier" className="rounded-lg border border-line bg-elev px-5 py-2.5 text-[14.5px] font-medium hover:border-ink-3">
               打开实验室

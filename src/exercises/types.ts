@@ -2,6 +2,15 @@ import type { CEMode } from "@/circuits/ce-parts";
 import type { DerivStep } from "@/components/math/Derivation";
 import type { CEParams } from "@/simulations/bjt/types";
 import type { Dim } from "@/simulations/units";
+import { CE_SECTIONS, UNITS } from "@/content/course";
+
+/** 通用电路图引用：由 src/components/circuit/diagrams 注册表渲染 */
+export interface DiagramRef {
+  id: string;
+  /** 元件旁的数值标注，如 { R: "1 kΩ" } */
+  labels?: Record<string, string>;
+  caption?: string;
+}
 
 export type Level = 1 | 2 | 3;
 
@@ -63,6 +72,7 @@ export interface Question {
   title: string;
   prompt: string;
   figure?: { params: CEParams; mode?: CEMode; caption?: string };
+  diagram?: DiagramRef;
   body: QuestionBody;
   hints: string[];
   solution: string;
@@ -81,7 +91,7 @@ export interface QuestionTemplate {
   fixed?: Question;
 }
 
-export const TOPIC_LABEL: Record<string, string> = {
+const CE_TOPIC_LABEL: Record<string, string> = {
   "ce-why": "放大原理",
   "ce-bias": "偏置与 Q 点",
   "ce-dc": "直流分析",
@@ -90,8 +100,34 @@ export const TOPIC_LABEL: Record<string, string> = {
   "ce-gain": "电压放大倍数",
   "ce-rio": "输入输出电阻",
   "ce-distortion": "失真与负载线",
-  "ce-example": "综合分析",
+  "ce-example": "共射综合分析",
 };
+
+/**
+ * 练习的“知识点”标签。共射单元按知识点（section）细分；其余单元以单元 id 作为知识点。
+ */
+export const TOPIC_LABEL: Record<string, string> = {
+  ...CE_TOPIC_LABEL,
+  ...Object.fromEntries(UNITS.filter((u) => u.id !== "ce-amplifier").map((u) => [u.id, u.title])),
+};
+
+const CE_SECTION_IDS = new Set(CE_SECTIONS.map((s) => s.id));
+
+/** 知识点 → 所属单元 id */
+export function topicUnit(topic: string): string {
+  return CE_SECTION_IDS.has(topic) ? "ce-amplifier" : topic;
+}
+
+/** 知识点 → 章号 */
+export function topicChapter(topic: string): number {
+  return UNITS.find((u) => u.id === topicUnit(topic))?.chapter ?? 0;
+}
+
+/** 知识点对应的课程位置（链接） */
+export function topicHref(topic: string): string {
+  const u = topicUnit(topic);
+  return u === "ce-amplifier" ? `/learn/ce-amplifier#${topic}` : `/learn/${u}`;
+}
 
 export const LEVEL_LABEL: Record<Level, string> = {
   1: "Level 1 · 概念理解",

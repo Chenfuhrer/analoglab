@@ -4,23 +4,33 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { ExerciseCard } from "@/components/exercises/ExerciseCard";
 import { ALL_TEMPLATES, instantiate } from "@/exercises/bank";
-import { LEVEL_LABEL, TOPIC_LABEL, type Level } from "@/exercises/types";
+import { LEVEL_LABEL, TOPIC_LABEL, topicChapter, type Level } from "@/exercises/types";
+import { CHAPTERS } from "@/content/course";
 import { useHydrated, useProgress } from "@/lib/store";
 import { cx } from "@/components/ui/primitives";
 
 export function PracticeClient() {
   const sp = useSearchParams();
   const topicParam = sp.get("topic");
-  const initialTopic = topicParam && topicParam !== "ce" && TOPIC_LABEL[topicParam] ? topicParam : "all";
+  const initialTopic = topicParam && TOPIC_LABEL[topicParam] ? topicParam : "all";
   const [level, setLevel] = useState<Level | 0>(0);
   const [topic, setTopic] = useState<string>(initialTopic);
+  const [chapter, setChapter] = useState<number>(initialTopic === "all" ? 0 : topicChapter(initialTopic));
+  const topicsOfChapter = useMemo(() => {
+    const seen = new Set<string>();
+    for (const t of ALL_TEMPLATES) if (topicChapter(t.topic) === chapter) seen.add(t.topic);
+    return Object.keys(TOPIC_LABEL).filter((t) => seen.has(t));
+  }, [chapter]);
   const [seeds, setSeeds] = useState<Record<string, number>>({});
   const hydrated = useHydrated();
   const attempts = useProgress((s) => s.attempts);
 
   const list = useMemo(
-    () => ALL_TEMPLATES.filter((t) => (level === 0 || t.level === level) && (topic === "all" || t.topic === topic)),
-    [level, topic],
+    () =>
+      ALL_TEMPLATES.filter(
+        (t) => (level === 0 || t.level === level) && (chapter === 0 || topicChapter(t.topic) === chapter) && (topic === "all" || t.topic === topic),
+      ),
+    [level, topic, chapter],
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const current = list.find((t) => t.id === selectedId) ?? list[0];
@@ -60,22 +70,43 @@ export function PracticeClient() {
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="eyebrow mr-1">知识点</span>
-        {["all", ...Object.keys(TOPIC_LABEL)].map((t) => (
+      <div className="flex flex-wrap items-center gap-2" data-testid="chapter-filter">
+        <span className="eyebrow mr-1">章节</span>
+        {[0, ...CHAPTERS.map((c) => c.n)].map((n) => (
           <button
-            key={t}
+            key={n}
             type="button"
             onClick={() => {
-              setTopic(t);
+              setChapter(n);
+              setTopic("all");
               setSelectedId(null);
             }}
-            className={cx("rounded-full border px-3 py-0.5 text-[12.5px]", topic === t ? "border-accent bg-accent-soft" : "border-line bg-elev text-ink-2")}
+            data-testid={`chapter-${n}`}
+            title={n ? CHAPTERS[n - 1].title : "全部章节"}
+            className={cx("rounded-full border px-3 py-0.5 text-[12.5px]", chapter === n ? "border-accent bg-accent-soft" : "border-line bg-elev text-ink-2")}
           >
-            {t === "all" ? "全部" : TOPIC_LABEL[t]}
+            {n === 0 ? "全部" : `${n} ${CHAPTERS[n - 1].title}`}
           </button>
         ))}
       </div>
+      {chapter !== 0 && topicsOfChapter.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="eyebrow mr-1">知识点</span>
+          {["all", ...topicsOfChapter].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => {
+                setTopic(t);
+                setSelectedId(null);
+              }}
+              className={cx("rounded-full border px-3 py-0.5 text-[12.5px]", topic === t ? "border-accent bg-accent-soft" : "border-line bg-elev text-ink-2")}
+            >
+              {t === "all" ? "全部" : TOPIC_LABEL[t]}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         <ol className="card thin-scroll h-fit max-h-[70vh] overflow-y-auto p-2 lg:sticky lg:top-[72px]" aria-label="题目列表">

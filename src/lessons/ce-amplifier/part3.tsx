@@ -166,7 +166,7 @@ export function SecExample() {
             <tbody className="num">
               <tr className="border-b border-line-2">
                 <td className="py-1.5 pr-3">
-                  <Rich text="$\dot A_u$" />
+                  <Rich text={r`$\dot A_u$`} />
                 </td>
                 <td className="pr-3">{sig(a.ac.Au, 4)}</td>
                 <td className="pr-3">{sig(open.ac.Au, 4)}</td>

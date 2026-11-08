@@ -1,5 +1,7 @@
 "use client";
 
+import { r } from "@/components/math/Tex";
+
 import { useMemo, useState } from "react";
 import { analyzeCE } from "@/simulations/bjt/ce";
 import { simulateWaveforms } from "@/simulations/bjt/transient";
@@ -98,7 +100,7 @@ export function CapReactance() {
             {verdict}
           </p>
           <p className="text-[12.5px] text-ink-3">
-            <Rich text="直流 $f=0$ 时 $X_C\to\infty$：任何电容都开路。“中频”指的是频率高到所有耦合、旁路电容都可视为短路，又低到晶体管结电容的影响可以忽略的频段。" />
+            <Rich text={r`直流 $f=0$ 时 $X_C\to\infty$：任何电容都开路。“中频”指的是频率高到所有耦合、旁路电容都可视为短路，又低到晶体管结电容的影响可以忽略的频段。`} />
           </p>
         </div>
       </div>
@@ -133,7 +135,7 @@ export function RoMeasure() {
             <Readout label="空载 $U_o'$" value={formatSI(UoOpen, "V")} />
             <Readout label="带载 $U_o$" value={formatSI(UoLoad, "V")} />
             <Readout label="测得 $R_o$" value={formatSI(RoMeas, "Ω")} tone="ac" testId="ro-measured" />
-            <Readout label="理论 $R_o\approx R_c$" value={formatSI(Rc, "Ω")} />
+            <Readout label={r`理论 $R_o\approx R_c$`} value={formatSI(Rc, "Ω")} />
           </div>
           <Rich
             text={String.raw`$$U_o=U_o'\frac{R_L}{R_o+R_L}\ \Rightarrow\ R_o=\left(\frac{U_o'}{U_o}-1\right)R_L=\left(\frac{${sig(UoOpen * 1e3, 4)}}{${sig(UoLoad * 1e3, 4)}}-1\right)\times ${sig(RL / 1e3, 3)}\,\mathrm{k\Omega}=${sig(RoMeas / 1e3, 4)}\,\mathrm{k\Omega}$$`}

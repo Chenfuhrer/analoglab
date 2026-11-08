@@ -1,6 +1,6 @@
 /**
  * 公式库：每条公式登记变量（含单位）、适用条件、近似假设与推导出处。
- * 共射单元的公式与计算核心一一对应；其余章节为常用结论（标注“规划中单元”，推导页待开发）。
+ * 每条公式通过 ref 链接到推导所在的知识点；各章新增公式见 ./chapters/。
  */
 export interface FormulaVar {
   sym: string;
@@ -20,7 +20,9 @@ export interface Formula {
   tags?: string[];
 }
 
-export const FORMULAS: Formula[] = [
+import { CHAPTER_FORMULAS } from "./chapters";
+
+const BASE_FORMULAS: Formula[] = [
   // ── 第 1 章 ──
   {
     id: "pn-current",
@@ -32,6 +34,7 @@ export const FORMULAS: Formula[] = [
       { sym: "U_T", name: "温度电压当量 kT/q，300 K 时约 26 mV", unit: "V" },
     ],
     conditions: ["理想 PN 结；未击穿", "u ≫ U_T 时 i ≈ I_S e^{u/U_T}；u 为负且 |u| ≫ U_T 时 i ≈ −I_S"],
+    ref: "pn-junction#pn-eq",
   },
   {
     id: "thermal-voltage",
@@ -43,6 +46,7 @@ export const FORMULAS: Formula[] = [
       { sym: "q", name: "电子电荷 1.6×10⁻¹⁹ C", unit: "C" },
     ],
     conditions: ["随温度线性变化"],
+    ref: "semi-carriers#sc-temp",
   },
   // ── 第 2 章 ──
   {
@@ -183,6 +187,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`u_O=-\frac{R_f}{R_1}u_I`,
     vars: [],
     conditions: ["理想运放、线性区（虚短、虚断）"],
+    ref: "opamp-proportional#op-inv",
   },
   {
     id: "opamp-noninv",
@@ -191,6 +196,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`u_O=\left(1+\frac{R_f}{R_1}\right)u_I`,
     vars: [],
     conditions: ["理想运放、线性区"],
+    ref: "opamp-proportional#op-noninv",
   },
   {
     id: "fb-general",
@@ -202,6 +208,7 @@ export const FORMULAS: Formula[] = [
       { sym: "\\dot F", name: "反馈系数", unit: "—" },
     ],
     conditions: ["负反馈：|1+AF| > 1；深度负反馈 |1+AF| ≫ 1"],
+    ref: "fb-concept#fc-block",
   },
   {
     id: "cmrr",
@@ -210,6 +217,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`K_{CMR}=\left|\frac{A_d}{A_c}\right|`,
     vars: [],
     conditions: ["常用分贝表示 20lg K_CMR"],
+    ref: "diff-amplifier#da-cmrr",
   },
   {
     id: "class-b-eff",
@@ -218,6 +226,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`\eta_{\max}=\frac{\pi}{4}\approx78.5\%`,
     vars: [],
     conditions: ["理想情况：忽略饱和压降，U_om = V_CC"],
+    ref: "pa-ocl#po-power",
   },
   {
     id: "osc-cond",
@@ -226,6 +235,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`\dot A\dot F=1\ \Longleftrightarrow\ |\dot A\dot F|=1,\ \ \varphi_A+\varphi_F=2n\pi`,
     vars: [],
     conditions: ["起振条件 |AF| > 1"],
+    ref: "osc-condition#oc-cond",
   },
   {
     id: "rc-osc",
@@ -234,6 +244,7 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`f_0=\frac{1}{2\pi RC},\qquad \dot A_u\ge3`,
     vars: [],
     conditions: ["文氏桥选频网络 R、C 对称"],
+    ref: "osc-rc#or-bridge",
   },
   {
     id: "rectifier",
@@ -242,8 +253,11 @@ export const FORMULAS: Formula[] = [
     tex: String.raw`U_{O(AV)}=0.9U_2\ (\text{无滤波}),\qquad U_{O(AV)}\approx1.2U_2\ (\text{电容滤波})`,
     vars: [{ sym: "U_2", name: "变压器副边电压有效值", unit: "V" }],
     conditions: ["电容滤波的 1.2 倍需 R_L C ≥ (3~5)T/2"],
+    ref: "ripple-filter#cf-estimate",
   },
 ];
+
+export const FORMULAS: Formula[] = [...BASE_FORMULAS, ...CHAPTER_FORMULAS];
 
 export const FORMULA_BY_ID: Record<string, Formula> = Object.fromEntries(FORMULAS.map((f) => [f.id, f]));
 

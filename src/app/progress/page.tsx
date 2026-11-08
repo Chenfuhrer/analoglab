@@ -5,7 +5,7 @@ import { Workspace } from "@/components/layout/Workspace";
 import { PageContext } from "@/components/layout/PageContext";
 import { CHAPTERS, UNITS, UNIT_BY_ID, sectionKey } from "@/content/course";
 import { ALL_TEMPLATES } from "@/exercises/bank";
-import { LEVEL_LABEL, TOPIC_LABEL, type Level } from "@/exercises/types";
+import { LEVEL_LABEL, TOPIC_LABEL, topicChapter, type Level } from "@/exercises/types";
 import { useHydrated, useProgress } from "@/lib/store";
 import { Button } from "@/components/ui/primitives";
 
@@ -22,10 +22,13 @@ export default function ProgressPage() {
     const xs = att.filter((a) => a.level === l);
     return { l, n: xs.length, ok: xs.filter((a) => a.correct).length, templates: ALL_TEMPLATES.filter((t) => t.level === l).length };
   });
-  const byTopic = Object.keys(TOPIC_LABEL).map((t) => {
-    const xs = att.filter((a) => a.topic === t);
-    return { t, n: xs.length, ok: xs.filter((a) => a.correct).length };
-  });
+  const withQuestions = new Set(ALL_TEMPLATES.map((t) => t.topic));
+  const byTopic = Object.keys(TOPIC_LABEL)
+    .filter((t) => withQuestions.has(t))
+    .map((t) => {
+      const xs = att.filter((a) => a.topic === t);
+      return { t, n: xs.length, ok: xs.filter((a) => a.correct).length, ch: topicChapter(t) };
+    });
   const days = new Set(hydrated ? activity.map((a) => new Date(a.t).toDateString()) : []);
 
   return (
@@ -93,10 +96,11 @@ export default function ProgressPage() {
         </div>
         <div>
           <h2 className="font-display mb-3 text-[19px] font-bold">按知识点</h2>
-          <div className="space-y-1.5">
-            {byTopic.map(({ t, n, ok }) => (
+          <div className="thin-scroll max-h-[420px] space-y-1.5 overflow-y-auto pr-1">
+            {byTopic.map(({ t, n, ok, ch }) => (
               <div key={t} className="flex items-center gap-3 text-[13px]">
-                <Link href={`/practice?topic=${t}`} className="w-28 shrink-0 hover:text-accent">
+                <span className="num w-7 shrink-0 text-[11px] text-ink-3">CH{ch}</span>
+                <Link href={`/practice?topic=${t}`} className="w-40 shrink-0 truncate hover:text-accent" title={TOPIC_LABEL[t]}>
                   {TOPIC_LABEL[t]}
                 </Link>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-sunken">
