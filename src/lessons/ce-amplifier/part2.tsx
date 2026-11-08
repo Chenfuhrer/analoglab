@@ -120,7 +120,7 @@ export function SecHParam() {
           steps={[
             { tex: r`i_B\approx I_{S}'\,e^{u_{B'E}/U_T}`, why: "PN 结正向伏安特性（$u_{B'E}\\gg U_T$ 时忽略 −1 项）；$u_{B'E}$ 为发射结本身的电压" },
             { tex: r`\frac{\mathrm di_B}{\mathrm du_{B'E}}=\frac{I_S'}{U_T}e^{u_{B'E}/U_T}=\frac{i_B}{U_T}`, why: "对指数求导：导数正比于函数本身" },
-            { tex: r`r_{b'e}=\left.\frac{\mathrm du_{B'E}}{\mathrm di_B}\right|_Q=\frac{U_T}{I_{BQ}}=(1+\beta)\frac{U_T}{I_{EQ}}`, why: "在 Q 点取切线斜率的倒数；$I_{EQ}=(1+\beta)I_{BQ}$" },
+            { tex: r`r_{b'e}=\left.\frac{\mathrm du_{B'E}}{\mathrm di_B}\right|_Q=\frac{U_T}{I_{BQ}}=(1+\beta)\frac{U_T}{I_{EQ}}`, why: "在 Q 点取切线斜率的倒数；$I_{EQ}=(1+\\beta)I_{BQ}$" },
             {
               tex: r`r_{be}=r_{bb'}+(1+\beta)\frac{U_T}{I_{EQ}}`,
               why: "基极引线到发射结之间还有基区体电阻 $r_{bb'}$（几十至几百欧，题目一般给出），两者串联",

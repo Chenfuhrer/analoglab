@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { describeContext, useTutorContext } from "@/lib/tutor-context";
 import { CE_OFFLINE, findSectionByKeyword } from "@/lessons/ce-amplifier/offline-tutor";
-import { CE_SECTIONS } from "@/content/course";
+import { CE_SECTIONS, UNIT_BY_ID } from "@/content/course";
+import { findUnitByKeyword, UNIT_HINTS } from "@/lessons/hints";
 import { Rich } from "@/components/math/Tex";
 
 const COMMANDS = ["用高中物理解释", "详细推导这个公式", "给我一个直观例子", "解释我的错误", "再出一道类似的题"] as const;
@@ -184,9 +185,12 @@ export function TutorPanel() {
 
 function offlineAnswer(text: string, cmd?: Command): string {
   const { lesson, exercise, lab } = useTutorContext.getState();
-  const sectionId = lesson?.sectionId ?? findSectionByKeyword(text) ?? (lab ? "ce-distortion" : null);
-  const hints = sectionId ? CE_OFFLINE[sectionId] : null;
-  const secTitle = CE_SECTIONS.find((s) => s.id === sectionId)?.title;
+  // 共射单元按知识点细分；其他单元按单元给出提示
+  const inCE = !lesson || lesson.unitId === "ce-amplifier";
+  const sectionId = inCE ? (lesson?.sectionId ?? findSectionByKeyword(text) ?? (lab ? "ce-distortion" : null)) : null;
+  const unitId = !inCE ? lesson!.unitId : !lesson?.sectionId && !findSectionByKeyword(text) ? findUnitByKeyword(text) : null;
+  const hints = sectionId ? CE_OFFLINE[sectionId] : unitId ? UNIT_HINTS[unitId] : null;
+  const secTitle = sectionId ? CE_SECTIONS.find((s) => s.id === sectionId)?.title : unitId ? UNIT_BY_ID[unitId]?.title : undefined;
   switch (cmd) {
     case "用高中物理解释":
       return hints ? `【${secTitle}】${hints.intuition}` : "先打开一个知识点（课程页面），我会给出对应的直观解释。";

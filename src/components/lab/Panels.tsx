@@ -1,5 +1,7 @@
 "use client";
 
+import { r } from "@/components/math/Tex";
+
 import { partInfo, type CEMode, type PartId, CE_MODES } from "@/circuits/ce-parts";
 import type { CEAnalysis } from "@/simulations/bjt/ce";
 import type { CEParams } from "@/simulations/bjt/types";
@@ -140,10 +142,10 @@ export function QPointPanel({ analysis }: { analysis: CEAnalysis }) {
       </div>
       <div className={`grid grid-cols-2 gap-1.5 ${ac.valid ? "" : "opacity-40"}`}>
         <Readout label="$r_{be}$" value={formatSI(ac.rbe, "Ω")} tone="ss" testId="rbe" />
-        <Readout label="$\dot A_u$" value={sig(ac.Au, 4)} tone="ac" testId="Au" />
+        <Readout label={r`$\dot A_u$`} value={sig(ac.Au, 4)} tone="ac" testId="Au" />
         <Readout label="$R_i$" value={formatSI(ac.Ri, "Ω")} tone="ac" testId="Ri" />
         <Readout label="$R_o$" value={formatSI(ac.Ro, "Ω")} tone="ac" testId="Ro" />
-        {p.Rs > 0 && <Readout label="$\dot A_{us}$" value={sig(ac.Aus, 4)} tone="ac" />}
+        {p.Rs > 0 && <Readout label={r`$\dot A_{us}$`} value={sig(ac.Aus, 4)} tone="ac" />}
         <Readout label="$U_{om}$（最大不失真）" value={formatSI(ac.Uom, "V")} sub={ac.limitedBy === "cutoff" ? "受截止限制" : "受饱和限制"} testId="Uom" />
       </div>
     </div>

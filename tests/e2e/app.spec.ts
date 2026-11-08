@@ -35,7 +35,7 @@ test.describe("页面导航", () => {
   test("首页 → 课程 → 实验室", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("cta-learn").click();
-    await expect(page).toHaveURL(/\/learn\/ce-amplifier/);
+    await expect(page).toHaveURL(/\/learn\/semi-carriers/);
     await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "实验室" }).click();
     await expect(page).toHaveURL(/\/lab$/);
   });
@@ -187,7 +187,7 @@ test.describe("练习与进度", () => {
     await expect(page.getByTestId("done-ce-why")).toHaveAttribute("aria-pressed", "true");
     await page.reload();
     await expect(page.getByTestId("done-ce-why")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("nav-progress")).toHaveText("1/10");
+    await expect(page.getByTestId("nav-progress")).toHaveText(/^1\/\d+$/);
   });
 });
 

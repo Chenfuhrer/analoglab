@@ -1,5 +1,7 @@
 "use client";
 
+import { r } from "@/components/math/Tex";
+
 import { useState, type ReactNode } from "react";
 import type { CEMode, PartId } from "@/circuits/ce-parts";
 import { CESchematic } from "@/components/circuit/CESchematic";
@@ -73,7 +75,7 @@ export function MiniLab({
               <Readout label="$I_{CQ}$" value={formatSI(dc.ICQ, "A")} tone="dc" testId={testId ? `${testId}-ICQ` : undefined} />
               <Readout label="$U_{CEQ}$" value={formatSI(dc.UCEQ, "V")} tone="dc" />
               <Readout label="$r_{be}$" value={ac.valid ? formatSI(ac.rbe, "Ω") : "—"} tone="ss" />
-              <Readout label="$\dot A_u$" value={ac.valid ? sig(ac.Au, 4) : "—"} tone="ac" testId={testId ? `${testId}-Au` : undefined} />
+              <Readout label={r`$\dot A_u$`} value={ac.valid ? sig(ac.Au, 4) : "—"} tone="ac" testId={testId ? `${testId}-Au` : undefined} />
               <Readout label="$R_i$" value={ac.valid ? formatSI(ac.Ri, "Ω") : "—"} tone="ac" />
               <Readout label="$R_o$" value={formatSI(ac.Ro, "Ω")} tone="ac" />
             </div>

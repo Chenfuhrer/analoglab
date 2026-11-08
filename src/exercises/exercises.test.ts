@@ -3,6 +3,10 @@ import { gradeNumeric } from "./grader";
 import { GENERATORS } from "./generators";
 import { ALL_TEMPLATES, questionFromKey, STATIC_QUESTIONS } from "./bank";
 import type { NumericPart } from "./types";
+import { TOPIC_LABEL, topicUnit } from "./types";
+import { UNITS } from "@/content/course";
+import { LESSON_IDS } from "@/lessons/lesson-ids";
+import { DIAGRAM_IDS } from "@/components/circuit/diagrams/ids";
 
 const part: NumericPart = {
   id: "ICQ",
@@ -52,7 +56,7 @@ describe("判题器", () => {
 });
 
 describe("参数化题目生成器", () => {
-  for (const t of GENERATORS) {
+  for (const t of ALL_TEMPLATES.filter((x) => x.generate)) {
     it(`${t.id}：200 个种子可复现、答案有限、标准答案能被判对`, () => {
       for (let seed = 1; seed <= 200; seed++) {
         const q1 = t.generate!(seed);
@@ -93,6 +97,25 @@ describe("参数化题目生成器", () => {
   });
   it("三级难度各至少 3 题", () => {
     for (const lv of [1, 2, 3] as const) expect(ALL_TEMPLATES.filter((t) => t.level === lv).length).toBeGreaterThanOrEqual(3);
+  });
+  it("题目 id 唯一", () => {
+    const ids = ALL_TEMPLATES.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+  it("每个已上线单元：三级练习各 ≥ 3 题，且知识点标签存在", () => {
+    for (const u of UNITS.filter((x) => x.status === "complete" && LESSON_IDS.has(x.id))) {
+      for (const lv of [1, 2, 3] as const) {
+        const n = ALL_TEMPLATES.filter((t) => t.level === lv && topicUnit(t.topic) === u.id).length;
+        expect(n, `${u.id} L${lv}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+    for (const t of ALL_TEMPLATES) expect(TOPIC_LABEL[t.topic], t.id).toBeTruthy();
+  });
+  it("配图 id 都已注册", () => {
+    for (const t of ALL_TEMPLATES) {
+      const q = t.fixed ?? t.generate!(3);
+      if (q.diagram) expect(DIAGRAM_IDS.has(q.diagram.id), `${t.id} → ${q.diagram.id}`).toBe(true);
+    }
   });
   it("静态选择题答案下标有效且每个选项都有解释", () => {
     for (const t of STATIC_QUESTIONS) {

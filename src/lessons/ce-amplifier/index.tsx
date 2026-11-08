@@ -33,7 +33,10 @@ export function CEAmplifierLesson() {
             </p>
             <p className="mt-2 text-ink-2">
               先修：
-              <span className="text-ink-3">晶体管特性曲线与三个工作区（第 2 章，规划中）</span>。建议配合{" "}
+              <Link className="text-accent hover:underline" href="/learn/bjt-curves">
+                晶体管特性曲线与三个工作区
+              </Link>
+              （第 2 章）。建议配合{" "}
               <Link className="text-accent hover:underline" href="/lab/ce-amplifier">
                 共射实验室
               </Link>{" "}
