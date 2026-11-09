@@ -117,9 +117,9 @@ const dividerQ: QuestionTemplate[] = [
       prompt: `分压式偏置共射电路：$V_{CC}=${p.VCC}$ V，$R_{b1}=${R(p.Rb1)}$（下），$R_{b2}=${R(p.Rb2)}$（上），$R_e=${R(p.Re2)}$（被旁路），$R_c=${R(p.Rc)}$，$\\beta=${p.beta}$，$U_{BEQ}=0.7$ V。用估算法求 $U_{BQ}$、$I_{CQ}$、$U_{CEQ}$。`,
       figure: { params: p, mode: "dc" },
       parts: [
-        num("UBQ", "$U_{BQ}$", e.UBQ, "V", "V", { mistakes: [{ value: (p.VCC * p.Rb2) / (p.Rb1 + p.Rb2), message: "分压时 $U_{BQ}$ 取的是**下偏置电阻** $R_{b1}$ 上的电压：$U_{BQ}=V_{CC}R_{b1}/(R_{b1}+R_{b2})$。" }] }),
-        num("ICQ", "$I_{CQ}$", e.ICQ, "A", "mA", { alts: [a.dc.ICQ], mistakes: [{ value: e.UBQ / p.Re2, message: "别忘了减去 $U_{BEQ}$：$I_{EQ}=(U_{BQ}-U_{BEQ})/R_e$。" }] }),
-        num("UCEQ", "$U_{CEQ}$", e.UCEQ, "V", "V", { alts: [a.dc.UCEQ], mistakes: [{ value: p.VCC - e.ICQ * p.Rc, message: "$R_e$ 上也有压降：$U_{CEQ}\\approx V_{CC}-I_{CQ}(R_c+R_e)$。" }] }),
+        num("UBQ", "$U_{BQ}$", e.UBQ, "V", "V", { mistakes: [{ value: (p.VCC * p.Rb2) / (p.Rb1 + p.Rb2), tag: "divider-swap", message: "分压时 $U_{BQ}$ 取的是**下偏置电阻** $R_{b1}$ 上的电压：$U_{BQ}=V_{CC}R_{b1}/(R_{b1}+R_{b2})$。" }] }),
+        num("ICQ", "$I_{CQ}$", e.ICQ, "A", "mA", { alts: [a.dc.ICQ], mistakes: [{ value: e.UBQ / p.Re2, tag: "forget-ube", message: "别忘了减去 $U_{BEQ}$：$I_{EQ}=(U_{BQ}-U_{BEQ})/R_e$。" }] }),
+        num("UCEQ", "$U_{CEQ}$", e.UCEQ, "V", "V", { alts: [a.dc.UCEQ], mistakes: [{ value: p.VCC - e.ICQ * p.Rc, tag: "kvl-loop", message: "$R_e$ 上也有压降：$U_{CEQ}\\approx V_{CC}-I_{CQ}(R_c+R_e)$。" }] }),
       ],
       hints: ["估算法：$U_{BQ}\\approx V_{CC}R_{b1}/(R_{b1}+R_{b2})$。", "$I_{CQ}\\approx I_{EQ}=(U_{BQ}-0.7)/R_e$。", "$U_{CEQ}\\approx V_{CC}-I_{CQ}(R_c+R_e)$。"],
       solution: `$U_{BQ}=${V(e.UBQ)}$，$I_{CQ}\\approx${A(e.ICQ)}$，$U_{CEQ}\\approx${V(e.UCEQ)}$（精确解 $I_{CQ}=${A(a.dc.ICQ)}$）。`,
@@ -131,8 +131,8 @@ const dividerQ: QuestionTemplate[] = [
       prompt: `分压偏置电路 $V_{CC}=${p.VCC}$ V，$R_{b1}=${R(p.Rb1)}$，$R_{b2}=${R(p.Rb2)}$，$R_e=${R(p.Re2)}$，$R_c=${R(p.Rc)}$，$\\beta=${p.beta}$，$U_{BEQ}=0.7$ V。用戴维南等效（不忽略 $I_{BQ}$）求 $V_{BB}$、$R_B$ 与 $I_{BQ}$。`,
       parts: [
         num("VBB", "$V_{BB}$", a.dc.VBB, "V", "V"),
-        num("RB", "$R_B$", a.dc.RB, "Ω", "kΩ", { mistakes: [{ value: p.Rb1 + p.Rb2, message: "戴维南等效电阻是两个偏置电阻**并联**。" }] }),
-        num("IBQ", "$I_{BQ}$", a.dc.IBQ, "A", "µA", { mistakes: [{ value: (a.dc.VBB - 0.7) / a.dc.RB, message: "基极回路中还有 $(1+\\beta)R_e$：$I_{BQ}=(V_{BB}-U_{BEQ})/[R_B+(1+\\beta)R_e]$。" }] }),
+        num("RB", "$R_B$", a.dc.RB, "Ω", "kΩ", { mistakes: [{ value: p.Rb1 + p.Rb2, tag: "series-parallel", message: "戴维南等效电阻是两个偏置电阻**并联**。" }] }),
+        num("IBQ", "$I_{BQ}$", a.dc.IBQ, "A", "µA", { mistakes: [{ value: (a.dc.VBB - 0.7) / a.dc.RB, tag: "emitter-reflection", message: "基极回路中还有 $(1+\\beta)R_e$：$I_{BQ}=(V_{BB}-U_{BEQ})/[R_B+(1+\\beta)R_e]$。" }] }),
       ],
       hints: ["$V_{BB}=V_{CC}R_{b1}/(R_{b1}+R_{b2})$，$R_B=R_{b1}\\para R_{b2}$。", "基极回路 KVL：$V_{BB}=I_{BQ}R_B+U_{BEQ}+(1+\\beta)I_{BQ}R_e$。"],
       solution: `$V_{BB}=${V(a.dc.VBB)}$，$R_B=${R(a.dc.RB)}$，$I_{BQ}=${A(a.dc.IBQ)}$，$I_{CQ}=${A(a.dc.ICQ)}$。`,
@@ -146,8 +146,8 @@ const dividerQ: QuestionTemplate[] = [
       figure: { params: p, mode: "full" },
       parts: [
         num("rbe", "$r_{be}$", a.ac.rbe, "Ω", "kΩ"),
-        num("Au", "$\\dot A_u$", a.ac.Au, "1", "−8", { signMessage: "共射电路输出与输入反相，$\\dot A_u$ 为负。", mistakes: [{ value: (-p.beta * a.ac.RLp) / Rib0, message: "$R_{e1}$ 没有被旁路，要折算到基极回路：分母为 $r_{be}+(1+\\beta)R_{e1}$。" }, { value: (-p.beta * a.ac.RLp) / (a.ac.rbe + (1 + p.beta) * (p.Re1 + p.Re2)), message: "被 $C_e$ 旁路的 $R_{e2}$ 在交流通路中短路，不应计入。" }] }),
-        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ", { mistakes: [{ value: par(a.dc.RB, a.ac.rbe), message: "$R_{e1}$ 使从基极看进去的电阻增大为 $r_{be}+(1+\\beta)R_{e1}$。" }] }),
+        num("Au", "$\\dot A_u$", a.ac.Au, "1", "−8", { signMessage: "共射电路输出与输入反相，$\\dot A_u$ 为负。", mistakes: [{ value: (-p.beta * a.ac.RLp) / Rib0, tag: "bypass-cap", message: "$R_{e1}$ 没有被旁路，要折算到基极回路：分母为 $r_{be}+(1+\\beta)R_{e1}$。" }, { value: (-p.beta * a.ac.RLp) / (a.ac.rbe + (1 + p.beta) * (p.Re1 + p.Re2)), tag: "bypass-cap", message: "被 $C_e$ 旁路的 $R_{e2}$ 在交流通路中短路，不应计入。" }] }),
+        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ", { mistakes: [{ value: par(a.dc.RB, a.ac.rbe), tag: "bypass-cap", message: "$R_{e1}$ 使从基极看进去的电阻增大为 $r_{be}+(1+\\beta)R_{e1}$。" }] }),
         num("Ro", "$R_o$", a.ac.Ro, "Ω", "kΩ"),
       ],
       hints: ["$r_{be}=r_{bb'}+(1+\\beta)U_T/I_{EQ}$。", "交流通路中只剩 $R_{e1}$。", "$\\dot A_u=-\\beta R_L'/[r_{be}+(1+\\beta)R_{e1}]$。"],
@@ -162,7 +162,7 @@ const dividerQ: QuestionTemplate[] = [
       figure: { params: p, mode: "full" },
       parts: [
         num("A1", "(1) $\\dot A_u$", a.ac.Au, "1", "−100", { signMessage: "共射电路反相。" }),
-        num("A2", "(2) $\\dot A_u$", b.ac.Au, "1", "−2", { signMessage: "共射电路反相。", mistakes: [{ value: a.ac.Au, message: "$C_e$ 开路后 $R_e$ 进入交流通路，增益会大幅下降。" }, { value: -a.ac.RLp / p.Re2, message: "$-R_L'/R_e$ 只是近似值，本题要求按完整公式计算（误差约 $r_{be}/[(1+\\beta)R_e]$）。" }] }),
+        num("A2", "(2) $\\dot A_u$", b.ac.Au, "1", "−2", { signMessage: "共射电路反相。", mistakes: [{ value: a.ac.Au, tag: "bypass-cap", message: "$C_e$ 开路后 $R_e$ 进入交流通路，增益会大幅下降。" }, { value: -a.ac.RLp / p.Re2, tag: "approx-misuse", message: "$-R_L'/R_e$ 只是近似值，本题要求按完整公式计算（误差约 $r_{be}/[(1+\\beta)R_e]$）。" }] }),
         num("Ri", "(2) $R_i$", b.ac.Ri, "Ω", "kΩ"),
       ],
       hints: ["Q 点不变，$r_{be}$ 不变。", "$C_e$ 开路：$\\dot A_u=-\\beta R_L'/[r_{be}+(1+\\beta)R_e]$，$R_i=R_{b1}\\para R_{b2}\\para[r_{be}+(1+\\beta)R_e]$。"],
@@ -246,9 +246,9 @@ const ccQ: QuestionTemplate[] = [
       prompt: `共集电路（固定偏置）：$V_{CC}=${p.VCC}$ V，$R_b=${R(p.Rb)}$，$R_e=${R(p.Re)}$，$\\beta=${p.beta}$，$U_{BEQ}=0.7$ V。求 $I_{BQ}$、$I_{EQ}$、$U_{CEQ}$。`,
       diagram: { id: "cc-amp", labels: { Rb: R(p.Rb), Re: R(p.Re), RL: R(p.RL) } },
       parts: [
-        num("IB", "$I_{BQ}$", a.dc.IBQ, "A", "µA", { mistakes: [{ value: (p.VCC - 0.7) / p.Rb, message: "基极回路中还有 $R_e$：$V_{CC}=I_{BQ}R_b+U_{BEQ}+(1+\\beta)I_{BQ}R_e$。" }] }),
+        num("IB", "$I_{BQ}$", a.dc.IBQ, "A", "µA", { mistakes: [{ value: (p.VCC - 0.7) / p.Rb, tag: "emitter-reflection", message: "基极回路中还有 $R_e$：$V_{CC}=I_{BQ}R_b+U_{BEQ}+(1+\\beta)I_{BQ}R_e$。" }] }),
         num("IE", "$I_{EQ}$", a.dc.IEQ, "A", "mA"),
-        num("UCE", "$U_{CEQ}$", a.dc.UCEQ, "V", "V", { mistakes: [{ value: a.dc.IEQ * p.Re, message: "这是 $U_{EQ}$；$U_{CEQ}=V_{CC}-U_{EQ}$。" }] }),
+        num("UCE", "$U_{CEQ}$", a.dc.UCEQ, "V", "V", { mistakes: [{ value: a.dc.IEQ * p.Re, tag: "kvl-loop", message: "这是 $U_{EQ}$；$U_{CEQ}=V_{CC}-U_{EQ}$。" }] }),
       ],
       hints: ["基极回路 KVL：$I_{BQ}=(V_{CC}-U_{BEQ})/[R_b+(1+\\beta)R_e]$。", "$U_{CEQ}=V_{CC}-I_{EQ}R_e$。"],
       solution: `$I_{BQ}=${A(a.dc.IBQ)}$，$I_{EQ}=${A(a.dc.IEQ)}$，$U_{CEQ}=${V(a.dc.UCEQ)}$。`,
@@ -260,9 +260,9 @@ const ccQ: QuestionTemplate[] = [
       prompt: `共集电路：$V_{CC}=${p.VCC}$ V，$R_b=${R(p.Rb)}$，$R_e=${R(p.Re)}$，$R_L=${R(p.RL)}$，信号源内阻 $R_s=${R(p.Rs)}$，$\\beta=${p.beta}$，$r_{bb'}=${p.rbb}\\,\\Omega$，$U_T=26$ mV。已知 $I_{EQ}=${A(a.dc.IEQ)}$。求 $\\dot A_u$、$R_i$、$R_o$。`,
       diagram: { id: "cc-amp", labels: { Rb: R(p.Rb), Re: R(p.Re), RL: R(p.RL) } },
       parts: [
-        num("Au", "$\\dot A_u$", a.ac.Au, "1", "0.98", { tol: 0.005, mistakes: [{ value: 1, message: "$\\dot A_u$ 略小于 1，请按 $(1+\\beta)R_L'/[r_{be}+(1+\\beta)R_L']$ 计算。" }] }),
-        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ", { mistakes: [{ value: par(p.Rb, a.ac.rbe + (1 + p.beta) * p.Re), message: "射极上的交流负载是 $R_e\\para R_L$，不是 $R_e$。" }] }),
-        num("Ro", "$R_o$", a.ac.Ro, "Ω", "Ω", { mistakes: [{ value: par(p.Re, a.ac.rbe / (1 + p.beta)), message: "求 $R_o$ 时信号源置零但保留内阻：分子应为 $r_{be}+R_s\\para R_b$。" }, { value: p.Re, message: "从射极看进去还要并上基极回路折算过来的 $(r_{be}+R_s')/(1+\\beta)$。" }] }),
+        num("Au", "$\\dot A_u$", a.ac.Au, "1", "0.98", { tol: 0.005, mistakes: [{ value: 1, tag: "approx-misuse", message: "$\\dot A_u$ 略小于 1，请按 $(1+\\beta)R_L'/[r_{be}+(1+\\beta)R_L']$ 计算。" }] }),
+        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ", { mistakes: [{ value: par(p.Rb, a.ac.rbe + (1 + p.beta) * p.Re), tag: "load-ignored", message: "射极上的交流负载是 $R_e\\para R_L$，不是 $R_e$。" }] }),
+        num("Ro", "$R_o$", a.ac.Ro, "Ω", "Ω", { mistakes: [{ value: par(p.Re, a.ac.rbe / (1 + p.beta)), tag: "io-resistance", message: "求 $R_o$ 时信号源置零但保留内阻：分子应为 $r_{be}+R_s\\para R_b$。" }, { value: p.Re, tag: "emitter-reflection", message: "从射极看进去还要并上基极回路折算过来的 $(r_{be}+R_s')/(1+\\beta)$。" }] }),
       ],
       hints: ["$r_{be}=r_{bb'}+(1+\\beta)U_T/I_{EQ}$，$R_L'=R_e\\para R_L$。", "$R_i=R_b\\para[r_{be}+(1+\\beta)R_L']$。", "$R_o=R_e\\para\\dfrac{r_{be}+R_s\\para R_b}{1+\\beta}$。"],
       solution: `$r_{be}=${R(a.ac.rbe)}$，$\\dot A_u=${sig(a.ac.Au, 4)}$，$R_i=${R(a.ac.Ri)}$，$R_o=${R(a.ac.Ro)}$。`,
@@ -276,22 +276,51 @@ const ccQ: QuestionTemplate[] = [
     const direct = RL / (Rs + RL);
     return {
       prompt: `内阻 $R_s=${R(Rs)}$ 的信号源要驱动 $R_L=${R(RL)}$ 的负载。(1) 直接连接时负载电压是信号源开路电压的多少倍？(2) 中间接一级射极跟随器（分压偏置 $R_{b1}=R_{b2}=100$ kΩ，$R_e=${R(p.Re)}$，$\\beta=${p.beta}$，已算得 $R_i=${R(a.ac.Ri)}$、$\\dot A_u=${sig(a.ac.Au, 3)}$）后，负载电压是信号源开路电压的多少倍？`,
-      parts: [num("d", "(1) 直接连接", direct, "1", "0.01"), num("v", "(2) 经跟随器 $\\dot A_{us}$", a.ac.Aus, "1", "0.6", { mistakes: [{ value: a.ac.Au, message: "还要考虑信号源内阻与跟随器输入电阻的分压：$\\dot A_{us}=\\dfrac{R_i}{R_s+R_i}\\dot A_u$。" }] })],
+      parts: [num("d", "(1) 直接连接", direct, "1", "0.01"), num("v", "(2) 经跟随器 $\\dot A_{us}$", a.ac.Aus, "1", "0.6", { mistakes: [{ value: a.ac.Au, tag: "source-resistance", message: "还要考虑信号源内阻与跟随器输入电阻的分压：$\\dot A_{us}=\\dfrac{R_i}{R_s+R_i}\\dot A_u$。" }] })],
       hints: ["直接连接：$R_L/(R_s+R_L)$。", "$\\dot A_{us}=\\dfrac{R_i}{R_s+R_i}\\dot A_u$。"],
       solution: `直接 ${sig(direct, 3)}，经跟随器 ${sig(a.ac.Aus, 3)}，提高约 ${sig(a.ac.Aus / direct, 3)} 倍。`,
     };
   }),
   gen({ id: "cc-g-div", level: 3, topic: T2, title: "分压偏置射极跟随器的完整分析" }, (g) => {
     const { p, a } = makeCC(g, true);
+    const VBB = (p.VCC * p.Rb1) / (p.Rb1 + p.Rb2);
+    const VBBs = (p.VCC * p.Rb2) / (p.Rb1 + p.Rb2);
     return {
       prompt: `分压偏置的共集电路：$V_{CC}=${p.VCC}$ V，$R_{b1}=${R(p.Rb1)}$（下），$R_{b2}=${R(p.Rb2)}$（上），$R_e=${R(p.Re)}$，$R_L=${R(p.RL)}$，$R_s=${R(p.Rs)}$，$\\beta=${p.beta}$，$r_{bb'}=${p.rbb}\\,\\Omega$。用戴维南等效求 $I_{EQ}$，再求 $\\dot A_u$、$R_i$、$R_o$、$\\dot A_{us}$。`,
       diagram: { id: "cc-amp", labels: { bias: "divider", Rb1: R(p.Rb1), Rb2: R(p.Rb2), Re: R(p.Re), RL: R(p.RL) } },
       parts: [
-        num("IE", "$I_{EQ}$", a.dc.IEQ, "A", "mA", { tol: 0.03 }),
-        num("Au", "$\\dot A_u$", a.ac.Au, "1", "0.98", { tol: 0.005 }),
-        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ"),
-        num("Ro", "$R_o$", a.ac.Ro, "Ω", "Ω", { tol: 0.04 }),
-        num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "0.9", { tol: 0.01 }),
+        num("IE", "$I_{EQ}$", a.dc.IEQ, "A", "mA", {
+          tol: 0.03,
+          mistakes: [
+            { value: (a.dc.IEQ * VBB) / (VBB - p.UBE), tag: "forget-ube", message: "别忘了减去 $U_{BEQ}$：$I_{EQ}=\\dfrac{V_{BB}-U_{BEQ}}{R_e+R_B/(1+\\beta)}$。" },
+            ...(VBBs > p.UBE + 0.1
+              ? [{ value: (a.dc.IEQ * (VBBs - p.UBE)) / (VBB - p.UBE), tag: "divider-swap" as const, message: "$V_{BB}$ 是下偏置电阻 $R_{b1}$ 上的分压：$V_{BB}=V_{CC}R_{b1}/(R_{b1}+R_{b2})$。" }]
+              : []),
+          ],
+        }),
+        num("Au", "$\\dot A_u$", a.ac.Au, "1", "0.98", {
+          tol: 0.005,
+          mistakes: [
+            { value: 1, tag: "approx-misuse", message: "$\\dot A_u$ 略小于 1，本题要求按 $(1+\\beta)R_L'/[r_{be}+(1+\\beta)R_L']$ 计算。" },
+            // 空载增益与 1 太接近时两种错误无法区分，只保留“取 1”
+            ...(Math.abs(a.ac.Auo - 1) > 0.012 ? [{ value: a.ac.Auo, tag: "load-ignored" as const, message: "射极上的交流负载是 $R_L'=R_e\\para R_L$，不是 $R_e$。" }] : []),
+          ],
+        }),
+        num("Ri", "$R_i$", a.ac.Ri, "Ω", "kΩ", {
+          mistakes: [
+            { value: par(a.dc.RB, a.ac.rbe + a.ac.RLp), tag: "emitter-reflection", message: "射极电阻折算到基极回路要乘 $(1+\\beta)$：$R_i=R_B\\para[r_{be}+(1+\\beta)R_L']$。" },
+            { value: a.ac.rbe + (1 + p.beta) * a.ac.RLp, tag: "io-resistance", message: "从输入端看进去还要并上偏置电阻 $R_B=R_{b1}\\para R_{b2}$。" },
+            { value: par(a.dc.RB, a.ac.rbe + (1 + p.beta) * p.Re), tag: "load-ignored", message: "射极的交流负载是 $R_e\\para R_L$：求 $R_i$ 时负载要接上。" },
+          ],
+        }),
+        num("Ro", "$R_o$", a.ac.Ro, "Ω", "Ω", {
+          tol: 0.04,
+          mistakes: [
+            { value: par(p.Re, a.ac.rbe + par(p.Rs, a.dc.RB)), tag: "emitter-reflection", message: "基极回路的电阻折算到射极要除以 $(1+\\beta)$：$R_o=R_e\\para\\dfrac{r_{be}+R_s\\para R_B}{1+\\beta}$。" },
+            { value: par(p.Re, a.ac.rbe / (1 + p.beta)), tag: "io-resistance", message: "求 $R_o$ 时信号源置零但保留内阻：分子是 $r_{be}+R_s\\para R_B$。" },
+          ],
+        }),
+        num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "0.9", { tol: 0.01, mistakes: [{ value: a.ac.Au, tag: "source-resistance", message: "这是 $\\dot A_u$；$\\dot A_{us}$ 还要乘 $R_i/(R_s+R_i)$。" }] }),
       ],
       hints: ["$V_{BB}=V_{CC}R_{b1}/(R_{b1}+R_{b2})$，$R_B=R_{b1}\\para R_{b2}$，$I_{BQ}=(V_{BB}-0.7)/[R_B+(1+\\beta)R_e]$。", "$R_o$ 中基极回路电阻为 $r_{be}+R_s\\para R_B$。"],
       solution: `$I_{EQ}=${A(a.dc.IEQ)}$，$\\dot A_u=${sig(a.ac.Au, 4)}$，$R_i=${R(a.ac.Ri)}$，$R_o=${R(a.ac.Ro)}$，$\\dot A_{us}=${sig(a.ac.Aus, 3)}$。`,
@@ -306,7 +335,7 @@ const ccQ: QuestionTemplate[] = [
       diagram: { id: "cc-amp", labels: { Rb: R(p.Rb), Re: R(p.Re), RL: R(p.RL) } },
       parts: [
         num("up", "正向（受饱和限制）", sat, "V", "V"),
-        num("down", "负向（受截止限制）", cut, "V", "V", { mistakes: [{ value: a.dc.IEQ * p.Re, message: "交流负载是 $R_e\\para R_L$：负半周 $i_E$ 减到 0 时输出下降 $I_{EQ}(R_e\\para R_L)$。" }] }),
+        num("down", "负向（受截止限制）", cut, "V", "V", { mistakes: [{ value: a.dc.IEQ * p.Re, tag: "load-ignored", message: "交流负载是 $R_e\\para R_L$：负半周 $i_E$ 减到 0 时输出下降 $I_{EQ}(R_e\\para R_L)$。" }] }),
         num("Uom", "$U_{om}$", a.ac.Uom, "V", "V"),
       ],
       hints: ["输出正半周 $u_E$ 升高，$u_{CE}$ 减小，直到 $U_{CES}$。", "输出负半周 $i_E$ 减小，直到 0，此时输出下降 $I_{EQ}R_L'$。"],
@@ -364,7 +393,7 @@ const cbQ: QuestionTemplate[] = [
       parts: [
         num("rbe", "$r_{be}$", a.ac.rbe, "Ω", "kΩ"),
         num("Au", "$\\dot A_u$", a.ac.Au, "1", "100", { signMessage: "共基电路输出与输入**同相**，$\\dot A_u$ 为正。" }),
-        num("Ri", "$R_i$", a.ac.Ri, "Ω", "Ω", { mistakes: [{ value: a.ac.rbe, message: "从发射极看进去，$r_{be}$ 要除以 $(1+\\beta)$。" }, { value: a.ac.rbe / (1 + p.beta), message: "还要并上 $R_e$（影响很小但应写出）。" }] }),
+        num("Ri", "$R_i$", a.ac.Ri, "Ω", "Ω", { mistakes: [{ value: a.ac.rbe, tag: "emitter-reflection", message: "从发射极看进去，$r_{be}$ 要除以 $(1+\\beta)$。" }] }),
         num("Ro", "$R_o$", a.ac.Ro, "Ω", "kΩ"),
       ],
       hints: ["$\\dot A_u=\\beta R_L'/r_{be}$，$R_L'=R_c\\para R_L$。", "$R_i=R_e\\para\\dfrac{r_{be}}{1+\\beta}$。"],
@@ -377,7 +406,7 @@ const cbQ: QuestionTemplate[] = [
     const a = analyzeCB({ ...p, Rs });
     return {
       prompt: `某共基放大电路 $\\dot A_u=${sig(a.ac.Au, 3)}$，$R_i=${R(a.ac.Ri)}$。接内阻 $R_s=${R(Rs)}$ 的信号源时，源电压放大倍数 $\\dot A_{us}$ 是多少？`,
-      parts: [num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "20", { mistakes: [{ value: a.ac.Au, message: "要考虑 $R_s$ 与 $R_i$ 的分压。" }] })],
+      parts: [num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "20", { mistakes: [{ value: a.ac.Au, tag: "source-resistance", message: "要考虑 $R_s$ 与 $R_i$ 的分压。" }] })],
       hints: ["$\\dot A_{us}=\\dfrac{R_i}{R_s+R_i}\\dot A_u$。"],
       solution: `$\\dot A_{us}=${sig(a.ac.Aus, 3)}$。共基电路适合由低内阻信号源（或前级的低输出电阻）驱动。`,
     };
@@ -400,10 +429,19 @@ const cbQ: QuestionTemplate[] = [
   gen({ id: "cb-g-full", level: 3, topic: T3, title: "共基电路完整分析" }, (g) => {
     const { p, a } = makeCB(g);
     const est = a.dc;
+    const VBB = (p.VCC * p.Rb1) / (p.Rb1 + p.Rb2);
+    const ICe = est.estimate?.ICQ ?? est.ICQ;
     return {
       prompt: `共基放大电路：$V_{CC}=${p.VCC}$ V，$R_{b1}=${R(p.Rb1)}$，$R_{b2}=${R(p.Rb2)}$，$R_e=${R(p.Re)}$，$R_c=${R(p.Rc)}$，$R_L=${R(p.RL)}$，$R_s=${R(p.Rs)}$，$\\beta=${p.beta}$，$r_{bb'}=${p.rbb}\\,\\Omega$，$U_{BEQ}=0.7$ V。(1) 用戴维南等效求 $I_{CQ}$ 与 $U_{CEQ}$；(2) 求 $\\dot A_u$ 与 $\\dot A_{us}$。`,
       diagram: { id: "cb-amp", labels: { Rb1: R(p.Rb1), Rb2: R(p.Rb2), Re: R(p.Re), Rc: R(p.Rc), RL: R(p.RL) } },
-      parts: [num("IC", "$I_{CQ}$", est.ICQ, "A", "mA", { alts: [est.estimate?.ICQ ?? est.ICQ] }), num("UCE", "$U_{CEQ}$", est.UCEQ, "V", "V", { alts: [est.estimate?.UCEQ ?? est.UCEQ] }), num("Au", "$\\dot A_u$", a.ac.Au, "1", "100"), num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "50")],
+      parts: [
+        num("IC", "$I_{CQ}$", est.ICQ, "A", "mA", { alts: [ICe], mistakes: [{ value: (ICe * VBB) / (VBB - p.UBE), tag: "forget-ube", message: "别忘了减去 $U_{BEQ}$：$I_{EQ}\\approx(U_{BQ}-U_{BEQ})/R_e$。" }] }),
+        num("UCE", "$U_{CEQ}$", est.UCEQ, "V", "V", { alts: [est.estimate?.UCEQ ?? est.UCEQ], mistakes: [{ value: p.VCC - est.ICQ * p.Rc, tag: "kvl-loop", message: "$R_e$ 上也有压降：$U_{CEQ}\\approx V_{CC}-I_{CQ}(R_c+R_e)$。" }] }),
+        num("Au", "$\\dot A_u$", a.ac.Au, "1", "100", { mistakes: [{ value: a.ac.Auo, tag: "load-ignored", message: "接负载后交流负载为 $R_L'=R_c\\para R_L$。" }] }),
+        num("Aus", "$\\dot A_{us}$", a.ac.Aus, "1", "50", {
+          mistakes: [{ value: a.ac.Au, tag: "source-resistance", message: "共基电路的输入电阻很小（约 $r_{be}/(1+\\beta)$），信号源内阻要分走大部分电压：$\\dot A_{us}=\\dot A_u\\dfrac{R_i}{R_s+R_i}$，远小于 $\\dot A_u$。" }],
+        }),
+      ],
       hints: ["直流通路与分压偏置共射电路相同。", "$\\dot A_u=\\beta R_L'/r_{be}$，$R_i=R_e\\para r_{be}/(1+\\beta)$，$\\dot A_{us}=\\dfrac{R_i}{R_s+R_i}\\dot A_u$。"],
       solution: `$I_{CQ}=${A(est.ICQ)}$，$U_{CEQ}=${V(est.UCEQ)}$；$\\dot A_u=${sig(a.ac.Au, 3)}$，$\\dot A_{us}=${sig(a.ac.Aus, 3)}$。`,
     };
@@ -416,6 +454,7 @@ const cbQ: QuestionTemplate[] = [
     return {
       prompt: `${text}。应优先选用哪种组态？`,
       choice: {
+        wrongTag: "config-compare",
         options: opts,
         answer: ans,
         why: [ans === 0 ? "正确：电压、电流都能放大，最常用于中间级。" : "共射的 $R_i$ 中等、$R_o\\approx R_c$ 较大，不是最佳选择。", ans === 1 ? "正确：共集电路 $R_i$ 大、$R_o$ 小。" : "共集电路没有电压放大作用。", ans === 2 ? "正确：共基电路高频特性好，且其小输入电阻适合低内阻源。" : "共基电路输入电阻很小。"],

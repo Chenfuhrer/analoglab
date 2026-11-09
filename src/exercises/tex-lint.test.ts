@@ -5,6 +5,7 @@ import { ALL_TEMPLATES } from "./bank";
 import { FORMULAS } from "@/formulas/library";
 import { UNITS } from "@/content/course";
 import { UNIT_HINTS } from "@/lessons/hints";
+import { MISCONCEPTION_IDS, MISCONCEPTIONS } from "./misconceptions";
 import type { Question } from "./types";
 
 const TOKEN = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
@@ -53,6 +54,11 @@ describe("题库与内容中的公式都能被 KaTeX 正确渲染", () => {
       }
       for (const c of f.conditions) for (const e of texErrors(c)) bad.push(`${f.id}: ${e}`);
     }
+    expect(bad).toEqual([]);
+  });
+  it("错因分类表", () => {
+    const bad: string[] = [];
+    for (const id of MISCONCEPTION_IDS) for (const e of texErrors(MISCONCEPTIONS[id].explain)) bad.push(`${id}: ${e}`);
     expect(bad).toEqual([]);
   });
   it("课程目录与离线提示", () => {

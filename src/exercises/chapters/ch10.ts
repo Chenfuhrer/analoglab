@@ -57,7 +57,7 @@ const classesQ: QuestionTemplate[] = [
     const PV = VCC * ICQ;
     return {
       prompt: `理想甲类功放（电感/变压器耦合负载）$V_{CC}=${VCC}$ V、$I_{CQ}=${ICQ}$ A。输出电压、电流摆幅都达到最大可能值的 ${k * 100}%（即 $U_{cem}=${sig(k * VCC, 3)}$ V、$I_{cm}=${sig(k * ICQ, 3)}$ A），求 $P_o$、$P_V$ 与效率。`,
-      parts: [num("po", "$P_o$", Po, "W", "W"), num("pv", "$P_V$", PV, "W", "W"), num("e", "$\\eta$", Po / PV, "1", "50%", { tol: 0.01 })],
+      parts: [num("po", "$P_o$", Po, "W", "W", { mistakes: [{ value: 2 * Po, tag: "rms-peak-avg", message: "$U_{cem}$、$I_{cm}$ 是幅值，功率要用有效值：$P_o=\\frac{U_{cem}}{\\sqrt2}\\cdot\\frac{I_{cm}}{\\sqrt2}=\\frac12U_{cem}I_{cm}$。" }] }), num("pv", "$P_V$", PV, "W", "W"), num("e", "$\\eta$", Po / PV, "1", "50%", { tol: 0.01 })],
       hints: ["$P_o=\\frac12U_{cem}I_{cm}$，$P_V=V_{CC}I_{CQ}$（与信号无关）。"],
       solution: `$P_o=${W(Po)}$，$P_V=${W(PV)}$，$\\eta=${sig((Po / PV) * 100, 3)}\\%$。`,
     };
@@ -68,7 +68,7 @@ const classesQ: QuestionTemplate[] = [
     const PV = Po / eta;
     return {
       prompt: `某功放输出功率 ${Po} W，效率 ${eta * 100}%。电源提供多少功率？晶体管总管耗是多少？`,
-      parts: [num("pv", "$P_V$", PV, "W", "W"), num("pt", "$P_T$", PV - Po, "W", "W", { mistakes: [{ value: Po * (1 - eta), message: "$P_T=P_V-P_o=P_o(1/\\eta-1)$。" }] })],
+      parts: [num("pv", "$P_V$", PV, "W", "W"), num("pt", "$P_T$", PV - Po, "W", "W", { mistakes: [{ value: Po * (1 - eta), tag: "power-balance", message: "$P_T=P_V-P_o=P_o(1/\\eta-1)$。" }] })],
       hints: ["$P_V=P_o/\\eta$，$P_T=P_V-P_o$。"],
       solution: `$P_V=${W(PV)}$，$P_T=${W(PV - Po)}$。`,
     };
@@ -146,7 +146,7 @@ const oclQ: QuestionTemplate[] = [
       prompt: `乙类 OCL 电路 $\\pm V_{CC}=\\pm${VCC}$ V，$R_L=${RL}\\,\\Omega$，管子饱和压降 $U_{CES}=${UCES}$ V。求最大输出功率 $P_{om}$、电源功率 $P_V$ 与效率 $\\eta$。`,
       diagram: { id: "ocl", labels: { RL: `${RL} Ω` } },
       parts: [
-        num("po", "$P_{om}$", m.Po, "W", "W", { mistakes: [{ value: (VCC * VCC) / (2 * RL), message: "要扣除饱和压降：$U_{om}=V_{CC}-U_{CES}$。" }] }),
+        num("po", "$P_{om}$", m.Po, "W", "W", { mistakes: [{ value: (VCC * VCC) / (2 * RL), tag: "forget-uces", message: "要扣除饱和压降：$U_{om}=V_{CC}-U_{CES}$。" }] }),
         num("pv", "$P_V$", m.PV, "W", "W"),
         num("e", "$\\eta$", m.eta, "1", "78.5%", { tol: 0.01 }),
       ],
@@ -161,7 +161,7 @@ const oclQ: QuestionTemplate[] = [
     const o = oclPower(VCC, RL, Uom);
     return {
       prompt: `乙类 OCL $\\pm V_{CC}=\\pm${VCC}$ V、$R_L=${RL}\\,\\Omega$，输出电压幅值 ${Uom} V。求 $P_o$、每管管耗 $P_{T1}$ 与效率。`,
-      parts: [num("po", "$P_o$", o.Po, "W", "W"), num("pt", "$P_{T1}$", o.PT1, "W", "W", { mistakes: [{ value: o.PT, message: "这是两管的总管耗，每管为一半。" }] }), num("e", "$\\eta$", o.eta, "1", "40%", { tol: 0.01 })],
+      parts: [num("po", "$P_o$", o.Po, "W", "W"), num("pt", "$P_{T1}$", o.PT1, "W", "W", { mistakes: [{ value: o.PT, tag: "power-balance", message: "这是两管的总管耗，每管为一半。" }] }), num("e", "$\\eta$", o.eta, "1", "40%", { tol: 0.01 })],
       hints: ["$\\eta=\\frac{\\pi U_{om}}{4V_{CC}}$。", "$P_{T1}=\\frac12(P_V-P_o)$。"],
       solution: `$P_o=${W(o.Po)}$，$P_{T1}=${W(o.PT1)}$，$\\eta=${sig(o.eta * 100, 3)}\\%$。`,
     };
@@ -172,7 +172,11 @@ const oclQ: QuestionTemplate[] = [
     const t = oclMaxTubeLoss(VCC, RL);
     return {
       prompt: `乙类 OCL $\\pm V_{CC}=\\pm${VCC}$ V、$R_L=${RL}\\,\\Omega$（理想管）。求每管最大管耗 $P_{T1\\max}$，并给出晶体管 $|U_{(BR)CEO}|$ 与 $I_{CM}$ 的最低要求。`,
-      parts: [num("pt", "$P_{T1\\max}$", t.PT1max, "W", "W"), num("u", "$|U_{(BR)CEO}|_{\\min}$", 2 * VCC, "V", "V"), num("i", "$I_{CM\\min}$", VCC / RL, "A", "A")],
+      parts: [
+        num("pt", "$P_{T1\\max}$", t.PT1max, "W", "W", { mistakes: [{ value: 2 * t.PT1max, tag: "power-balance", message: "这是两管总管耗的最大值；每管为一半：$P_{T1\\max}=\\dfrac{V_{CC}^2}{\\pi^2R_L}\\approx0.2P_{om}$。" }] }),
+        num("u", "$|U_{(BR)CEO}|_{\\min}$", 2 * VCC, "V", "V", { mistakes: [{ value: VCC, tag: "worst-case", message: "一管饱和导通时，另一只截止管承受的电压接近 $2V_{CC}$。" }] }),
+        num("i", "$I_{CM\\min}$", VCC / RL, "A", "A"),
+      ],
       hints: ["$P_{T1\\max}=V_{CC}^2/(\\pi^2R_L)$。", "耐压 $2V_{CC}$，电流 $V_{CC}/R_L$。"],
       solution: `$P_{T1\\max}=${W(t.PT1max)}$，$|U_{(BR)CEO}|\\ge${V(2 * VCC)}$，$I_{CM}\\ge${formatSI(VCC / RL, "A")}$。`,
     };
@@ -202,7 +206,11 @@ const oclQ: QuestionTemplate[] = [
     const o = oclPower(VCC, RL, t.Uom);
     return {
       prompt: `乙类 OCL $\\pm V_{CC}=\\pm${VCC}$ V、$R_L=${RL}\\,\\Omega$。管耗最大时输出电压幅值是多少？此时输出功率和效率各为多少？`,
-      parts: [num("u", "$U_{om}$", t.Uom, "V", "V"), num("p", "$P_o$", o.Po, "W", "W"), num("e", "$\\eta$", o.eta, "1", "50%", { tol: 0.01 })],
+      parts: [
+        num("u", "$U_{om}$", t.Uom, "V", "V", { mistakes: [{ value: VCC, tag: "worst-case", message: "管耗最大不在输出最大时：$P_T$ 在 $U_{om}=2V_{CC}/\\pi\\approx0.64V_{CC}$ 处取最大值。" }] }),
+        num("p", "$P_o$", o.Po, "W", "W", { mistakes: [{ value: (t.Uom * t.Uom) / RL, tag: "rms-peak-avg", message: "$U_{om}$ 是幅值，功率要用有效值：$P_o=\\dfrac{U_{om}^2}{2R_L}$。" }] }),
+        num("e", "$\\eta$", o.eta, "1", "50%", { tol: 0.01, mistakes: [{ value: Math.PI / 4, tag: "worst-case", message: "78.5% 是输出幅值接近 $V_{CC}$ 时的最高效率；此时 $\\eta=\\frac\\pi4\\cdot\\frac{U_{om}}{V_{CC}}=50\\%$。" }] }),
+      ],
       hints: ["对 $P_{T1}(U_{om})$ 求导，得 $U_{om}=2V_{CC}/\\pi$。"],
       solution: `$U_{om}=${V(t.Uom)}$，$P_o=${W(o.Po)}$，$\\eta=50\\%$（恰好 $\\pi/4\\times2/\\pi$）。`,
     };
@@ -258,7 +266,7 @@ const crossQ: QuestionTemplate[] = [
     return {
       prompt: `OTL 电路单电源 $V_{CC}=${VCC}$ V，$R_L=${RL}\\,\\Omega$，$U_{CES}=${UCES}$ V。求最大输出功率与静态时输出电容上的电压。`,
       diagram: { id: "otl", labels: { RL: `${RL} Ω` } },
-      parts: [num("p", "$P_{om}$", o.Po, "W", "W", { mistakes: [{ value: oclMax(VCC, RL, UCES).Po, message: "OTL 等效于 $\\pm V_{CC}/2$ 的 OCL，公式中用 $V_{CC}/2$。" }] }), num("u", "$U_C$", VCC / 2, "V", "V")],
+      parts: [num("p", "$P_{om}$", o.Po, "W", "W", { mistakes: [{ value: oclMax(VCC, RL, UCES).Po, tag: "otl-supply", message: "OTL 等效于 $\\pm V_{CC}/2$ 的 OCL，公式中用 $V_{CC}/2$。" }] }), num("u", "$U_C$", VCC / 2, "V", "V")],
       hints: ["$P_{om}=\\frac{(V_{CC}/2-U_{CES})^2}{2R_L}$。"],
       solution: `$P_{om}=${W(o.Po)}$，$U_C=${V(VCC / 2)}$。`,
     };
@@ -314,7 +322,7 @@ const crossQ: QuestionTemplate[] = [
     const o = otlMax(VCC, 8, UCES);
     return {
       prompt: `OTL 电路 $V_{CC}=${VCC}$ V，$U_{CES}=${UCES}$ V，$R_L=8\\,\\Omega$。负载上最大不失真输出电压的峰值与有效值各是多少？`,
-      parts: [num("p", "峰值", o.Uom, "V", "V", { mistakes: [{ value: VCC - UCES, message: "OTL 的摆幅以 $V_{CC}/2$ 为中心，峰值为 $V_{CC}/2-U_{CES}$。" }] }), num("r", "有效值", o.Uom / Math.SQRT2, "V", "V")],
+      parts: [num("p", "峰值", o.Uom, "V", "V", { mistakes: [{ value: VCC - UCES, tag: "otl-supply", message: "OTL 的摆幅以 $V_{CC}/2$ 为中心，峰值为 $V_{CC}/2-U_{CES}$。" }] }), num("r", "有效值", o.Uom / Math.SQRT2, "V", "V")],
       hints: ["输出端静态电位 $V_{CC}/2$。"],
       solution: `峰值 ${V(o.Uom)}，有效值 ${V(o.Uom / Math.SQRT2)}。`,
     };

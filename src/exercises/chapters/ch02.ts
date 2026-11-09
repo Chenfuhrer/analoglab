@@ -139,12 +139,12 @@ const currentsQ: QuestionTemplate[] = [
     hints: ["载流子传输的三个过程：发射、复合、收集。"],
   }),
   gen({ id: "bc-g-split", level: 2, topic: T2, title: "由 I_B 求 I_C、I_E" }, (g) => {
-    const beta = g.pick([40, 50, 60, 80, 100, 120, 150, 200]);
+    const beta = g.pick([40, 50, 60, 80, 100]);
     const IB = g.pick([10, 15, 20, 25, 30, 40, 50]) * 1e-6;
     const c = currentsFromIB(IB, beta, 0);
     return {
-      prompt: `某晶体管工作在放大区，$\\bar\\beta=${beta}$，测得 $I_B=${A(IB)}$（忽略 $I_{CEO}$）。求 $I_C$、$I_E$ 及 $\\bar\\alpha$。`,
-      parts: [num("IC", "$I_C$", c.IC, "A", "mA"), num("IE", "$I_E$", c.IE, "A", "mA", { mistakes: [{ value: c.IC, message: "$I_E=I_B+I_C$，不能忽略 $I_B$（题目要求精确值）。" }] }), num("a", "$\\bar\\alpha$", alphaFromBeta(beta), "1", "0.99", { tol: 0.002 })],
+      prompt: `某晶体管工作在放大区，$\\bar\\beta=${beta}$，测得 $I_B=${A(IB)}$（忽略 $I_{CEO}$）。求 $I_C$、$I_E$ 及 $\\bar\\alpha$（$I_E$ 要求精确值，保留三位有效数字）。`,
+      parts: [num("IC", "$I_C$", c.IC, "A", "mA"), num("IE", "$I_E$", c.IE, "A", "mA", { tol: 0.008, mistakes: [{ value: c.IC, tag: "bjt-currents", message: "$I_E=I_B+I_C$，不能忽略 $I_B$（题目要求精确值）。" }] }), num("a", "$\\bar\\alpha$", alphaFromBeta(beta), "1", "0.99", { tol: 0.002 })],
       hints: ["$I_C=\\bar\\beta I_B$，$I_E=(1+\\bar\\beta)I_B$。", "$\\bar\\alpha=\\bar\\beta/(1+\\bar\\beta)$。"],
       solution: `$I_C=${A(c.IC)}$，$I_E=${A(c.IE)}$，$\\bar\\alpha=${sig(alphaFromBeta(beta), 4)}$。`,
     };
@@ -154,7 +154,7 @@ const currentsQ: QuestionTemplate[] = [
     const b = betaFromAlpha(a);
     return {
       prompt: `某晶体管共基电流放大系数 $\\bar\\alpha=${a}$。求 $\\bar\\beta$；若 $I_E=2$ mA，求 $I_B$。`,
-      parts: [num("b", "$\\bar\\beta$", b, "1", "49"), num("IB", "$I_B$", 2e-3 * (1 - a), "A", "µA", { mistakes: [{ value: 2e-3 / b, message: "已知的是 $I_E$ 不是 $I_C$：$I_B=I_E/(1+\\bar\\beta)=(1-\\bar\\alpha)I_E$。" }] })],
+      parts: [num("b", "$\\bar\\beta$", b, "1", "49"), num("IB", "$I_B$", 2e-3 * (1 - a), "A", "µA", { tol: 0.004, mistakes: [{ value: 2e-3 / b, tag: "bjt-currents", message: "已知的是 $I_E$ 不是 $I_C$：$I_B=I_E/(1+\\bar\\beta)=(1-\\bar\\alpha)I_E$。" }] })],
       hints: ["$\\bar\\beta=\\bar\\alpha/(1-\\bar\\alpha)$。", "$I_B=I_E-I_C=(1-\\bar\\alpha)I_E$。"],
       solution: `$\\bar\\beta=${sig(b, 4)}$，$I_B=${A(2e-3 * (1 - a))}$。`,
     };
@@ -166,7 +166,7 @@ const currentsQ: QuestionTemplate[] = [
     const c = currentsFromIB(IB, beta, ICBO);
     return {
       prompt: `晶体管 $\\bar\\beta=${beta}$，$I_{CBO}=${A(ICBO)}$。求穿透电流 $I_{CEO}$，以及 $I_B=${A(IB)}$ 时的 $I_C$（计入 $I_{CEO}$）。`,
-      parts: [num("ICEO", "$I_{CEO}$", c.ICEO, "A", "µA", { mistakes: [{ value: beta * ICBO, message: "$I_{CEO}=(1+\\bar\\beta)I_{CBO}$，别漏了“1+”。" }] }), num("IC", "$I_C$", c.IC, "A", "mA", { tol: 0.01 })],
+      parts: [num("ICEO", "$I_{CEO}$", c.ICEO, "A", "µA", { tol: 0.004, mistakes: [{ value: beta * ICBO, tag: "bjt-currents", message: "$I_{CEO}=(1+\\bar\\beta)I_{CBO}$，别漏了“1+”。" }] }), num("IC", "$I_C$", c.IC, "A", "mA", { tol: 0.01 })],
       hints: ["基极开路时 $I_{CBO}$ 相当于“内部基极电流”，被放大。", "$I_C=\\bar\\beta I_B+I_{CEO}$。"],
       solution: `$I_{CEO}=${A(c.ICEO)}$，$I_C=${A(c.IC)}$。`,
     };
@@ -258,6 +258,7 @@ const curvesQ: QuestionTemplate[] = [
     return {
       prompt: `测得某硅 ${type} 管三个电极的对地电位：$U_B=${sig(B, 3)}$ V，$U_E=${sig(E, 3)}$ V，$U_C=${sig(C, 3)}$ V。该管工作在：`,
       choice: {
+        wrongTag: "device-state",
         options: REGIONS.map((x) => REGION_LABEL[x]),
         answer: REGIONS.indexOf(reg),
         why: [
@@ -323,7 +324,7 @@ const curvesQ: QuestionTemplate[] = [
     return {
       prompt: `图示电路：$V_{BB}=${VBB}$ V，$R_b=${R(Rb)}$，$V_{CC}=${VCC}$ V，$R_c=${R(Rc)}$，$\\beta=${beta}$，$U_{BE(on)}=0.7$ V，$U_{CES}=0.3$ V。判断工作区并求 $I_C$。`,
       diagram: { id: "bjt-test", labels: { VBB: `${VBB} V`, Rb: R(Rb), VCC: `${VCC} V`, Rc: R(Rc) } },
-      parts: [num("IC", "$I_C$", IC, "A", "mA", { mistakes: region === "saturation" ? [{ value: beta * IB, message: "按 $\\beta I_B$ 算出的 $I_C$ 会使 $U_{CE}<U_{CES}$——管子已饱和，$I_C\\approx(V_{CC}-U_{CES})/R_c$。" }] : [] }), num("r", "工作区（放大填 1，饱和填 2，截止填 0）", region === "active" ? 1 : region === "saturation" ? 2 : 0, "1", "1", { tol: 0.01 })],
+      parts: [num("IC", "$I_C$", IC, "A", "mA", { mistakes: region === "saturation" ? [{ value: beta * IB, tag: "device-state", message: "按 $\\beta I_B$ 算出的 $I_C$ 会使 $U_{CE}<U_{CES}$——管子已饱和，$I_C\\approx(V_{CC}-U_{CES})/R_c$。" }] : [] }), num("r", "工作区（放大填 1，饱和填 2，截止填 0）", region === "active" ? 1 : region === "saturation" ? 2 : 0, "1", "1", { tol: 0.01 })],
       hints: ["先看 $V_{BB}$ 能否使发射结导通。", "假设放大区：$I_C=\\beta I_B$，再验证 $U_{CE}=V_{CC}-I_CR_c$ 是否大于 $U_{CES}$。", "临界饱和基极电流 $I_{BS}=(V_{CC}-U_{CES})/(\\beta R_c)$，$I_B>I_{BS}$ 即饱和。"],
       solution: `${REGION_LABEL[region]}，$I_C=${A(IC)}$（$I_B=${A(IB)}$，$I_{BS}=${A(res.IBS)}$）。`,
     };
@@ -338,7 +339,7 @@ const curvesQ: QuestionTemplate[] = [
     return {
       prompt: `开关电路：$V_{CC}=${VCC}$ V，$R_c=${R(Rc)}$，$\\beta=${beta}$，$U_{CES}=0.3$ V。输入高电平 $V_{BB}=${VBB}$ V 时要求晶体管饱和导通。求临界饱和基极电流 $I_{BS}$ 及 $R_b$ 的最大允许值。`,
       diagram: { id: "bjt-test", labels: { VBB: `${VBB} V`, VCC: `${VCC} V`, Rc: R(Rc) } },
-      parts: [num("IBS", "$I_{BS}$", IBS, "A", "µA", { mistakes: [{ value: VCC / (beta * Rc), message: "临界饱和时 $U_{CE}=U_{CES}$，$I_{CS}=(V_{CC}-U_{CES})/R_c$。" }] }), num("Rb", "$R_{b\\max}$", RbMax, "Ω", "kΩ")],
+      parts: [num("IBS", "$I_{BS}$", IBS, "A", "µA", { mistakes: [{ value: VCC / (beta * Rc), tag: "forget-uces", message: "临界饱和时 $U_{CE}=U_{CES}$，$I_{CS}=(V_{CC}-U_{CES})/R_c$。" }] }), num("Rb", "$R_{b\\max}$", RbMax, "Ω", "kΩ")],
       hints: ["临界饱和：$I_{CS}=(V_{CC}-U_{CES})/R_c$，$I_{BS}=I_{CS}/\\beta$。", "饱和条件 $I_B\\ge I_{BS}$，即 $(V_{BB}-0.7)/R_b\\ge I_{BS}$。"],
       solution: `$I_{BS}=${A(IBS)}$，$R_b\\le${R(RbMax)}$（实际取更小的值以保证深度饱和）。`,
     };
@@ -421,7 +422,7 @@ const paramsQ: QuestionTemplate[] = [
     const Imax = Math.min(PCM / U, ICM);
     return {
       prompt: `晶体管 $P_{CM}=${PCM}$ W，$I_{CM}=${sig(ICM * 1e3, 3)}$ mA。$U_{CE}=${U}$ V 时集电极电流最大允许多少？`,
-      parts: [num("I", "$I_{C\\max}$", Imax, "A", "mA", { mistakes: [{ value: PCM / U, message: "还要与 $I_{CM}$ 比较，取二者中较小的。" }, { value: ICM, message: "还要检查功耗：$I_C\\le P_{CM}/U_{CE}$。" }] })],
+      parts: [num("I", "$I_{C\\max}$", Imax, "A", "mA", { mistakes: [{ value: PCM / U, tag: "worst-case", message: "还要与 $I_{CM}$ 比较，取二者中较小的。" }, { value: ICM, tag: "worst-case", message: "还要检查功耗：$I_C\\le P_{CM}/U_{CE}$。" }] })],
       hints: ["$I_C\\le P_{CM}/U_{CE}$ 且 $I_C\\le I_{CM}$。"],
       solution: `$\\min(${PCM}/${U},\\ ${sig(ICM, 3)})=${A(Imax)}$。`,
     };
@@ -446,7 +447,7 @@ const paramsQ: QuestionTemplate[] = [
     const Pmax = (VCC * VCC) / (4 * Rc);
     return {
       prompt: `电路 $V_{CC}=${VCC}$ V、$R_c=${R(Rc)}$（发射极接地）。在直流负载线上移动 Q 点时，晶体管管耗的最大值是多少？若 $P_{CM}=${PCM}$ W，Q 点能否放在负载线的任意位置（能填 1，不能填 0）？`,
-      parts: [num("P", "最大管耗", Pmax, "W", "W", { mistakes: [{ value: (VCC * VCC) / Rc, message: "管耗 $u_{CE}i_C=u_{CE}(V_{CC}-u_{CE})/R_c$，在 $u_{CE}=V_{CC}/2$ 处取最大值 $V_{CC}^2/(4R_c)$。" }] }), num("ok", "能否任意放置", Pmax <= PCM ? 1 : 0, "1", "1", { tol: 0.01 })],
+      parts: [num("P", "最大管耗", Pmax, "W", "W", { mistakes: [{ value: (VCC * VCC) / Rc, tag: "worst-case", message: "管耗 $u_{CE}i_C=u_{CE}(V_{CC}-u_{CE})/R_c$，在 $u_{CE}=V_{CC}/2$ 处取最大值 $V_{CC}^2/(4R_c)$。" }] }), num("ok", "能否任意放置", Pmax <= PCM ? 1 : 0, "1", "1", { tol: 0.01 })],
       hints: ["负载线上 $i_C=(V_{CC}-u_{CE})/R_c$。", "$P=u_{CE}(V_{CC}-u_{CE})/R_c$ 是关于 $u_{CE}$ 的二次函数。"],
       solution: `$P_{\\max}=V_{CC}^2/(4R_c)=${formatSI(Pmax, "W")}$，${Pmax <= PCM ? "小于" : "大于"} $P_{CM}$。`,
     };

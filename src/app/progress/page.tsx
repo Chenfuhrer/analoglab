@@ -5,13 +5,18 @@ import { Workspace } from "@/components/layout/Workspace";
 import { PageContext } from "@/components/layout/PageContext";
 import { CHAPTERS, UNITS, UNIT_BY_ID, sectionKey } from "@/content/course";
 import { ALL_TEMPLATES } from "@/exercises/bank";
+import { profileRows, RESOLVE_AFTER } from "@/exercises/diagnosis";
+import { MISCONCEPTIONS } from "@/exercises/misconceptions";
 import { LEVEL_LABEL, TOPIC_LABEL, topicChapter, type Level } from "@/exercises/types";
 import { useHydrated, useProgress } from "@/lib/store";
-import { Button } from "@/components/ui/primitives";
+import { Badge, Button } from "@/components/ui/primitives";
+import { MisconceptionDetail } from "@/components/exercises/DiagnosisPanel";
 
 export default function ProgressPage() {
   const hydrated = useHydrated();
-  const { sectionsDone, attempts, mistakes, activity, resetAll } = useProgress();
+  const { sectionsDone, attempts, mistakes, activity, misconceptions, resetAll } = useProgress();
+  const mcRows = hydrated ? profileRows(misconceptions ?? {}) : [];
+  const mcOpen = mcRows.filter((x) => !x.resolved).length;
   const complete = UNITS.filter((u) => u.status === "complete");
   const totalSections = complete.reduce((n, u) => n + (u.sections?.length ?? 0), 0);
   const doneSections = hydrated ? complete.reduce((n, u) => n + (u.sections ?? []).filter((s) => sectionsDone[sectionKey(u.id, s.id)]).length, 0) : 0;
@@ -43,6 +48,40 @@ export default function ProgressPage() {
         <Stat label="错题本" value={hydrated ? String(Object.keys(mistakes).length) : "—"} sub="含自动收录与手动收藏" />
         <Stat label="学习天数" value={hydrated ? String(days.size) : "—"} sub="有学习记录的天数" />
       </div>
+
+      <section className="mt-8" data-testid="misconception-profile">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="font-display text-[19px] font-bold">错因画像</h2>
+          <span className="text-[12.5px] text-ink-3">
+            {hydrated && mcRows.length > 0 ? `${mcRows.length} 种错因，其中 ${mcOpen} 种待巩固。` : ""}在其他题目上做对 {RESOLVE_AFTER} 次涉及该错因的题，即标为“已纠正”。
+          </span>
+        </div>
+        {hydrated && mcRows.length === 0 && (
+          <p className="card p-4 text-[13.5px] text-ink-3">还没有错因记录。数值题答错时，系统会把你的答案与常见的错误思路逐一比对；识别出的错因会汇总在这里，并给出复习位置和针对练习。</p>
+        )}
+        <div className="grid gap-3 md:grid-cols-2">
+          {mcRows.map(({ id, stat, resolved }) => (
+            <details key={id} open={!resolved} className="card px-4 py-3" data-testid={`mc-row-${id}`} data-resolved={resolved ? "1" : "0"}>
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
+                <Badge tone={resolved ? "ok" : "warn"}>{resolved ? "已纠正" : "待巩固"}</Badge>
+                <span className="text-[14px] font-semibold">{MISCONCEPTIONS[id].short}</span>
+                <span className="text-[11.5px] text-ink-3">{MISCONCEPTIONS[id].group}</span>
+                <span className="num ml-auto text-[12px] text-ink-3">
+                  出现 {stat.hits} 次 · {new Date(stat.lastHit).toLocaleDateString("zh-CN")}
+                </span>
+              </summary>
+              <div className="mt-2 border-t border-line-2 pt-2">
+                <MisconceptionDetail id={id} showTitle={false} />
+                {!resolved && (
+                  <p className="mt-1.5 text-[11.5px] text-ink-3">
+                    纠正进度：最近一次出错后，已在其他题目上避开 {stat.clean}/{RESOLVE_AFTER} 次。
+                  </p>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="font-display mb-3 text-[19px] font-bold">课程进度</h2>
@@ -137,7 +176,7 @@ export default function ProgressPage() {
           variant="danger"
           size="sm"
           onClick={() => {
-            if (window.confirm("确定清空本浏览器中的全部学习记录（知识点进度、做题记录、错题本）？此操作不可撤销。")) resetAll();
+            if (window.confirm("确定清空本浏览器中的全部学习记录（知识点进度、做题记录、错题本、错因画像）？此操作不可撤销。")) resetAll();
           }}
         >
           清空学习记录

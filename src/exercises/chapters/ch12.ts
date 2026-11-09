@@ -52,7 +52,27 @@ const rectQ: QuestionTemplate[] = [
     return {
       prompt: `单相${kind === "half" ? "半波" : "桥式"}整流（理想二极管、电阻负载），$U_2=${U2}$ V，$R_L=${R(RL)}$。求 $U_{O(AV)}$、每只二极管的平均电流和最大反向电压。`,
       diagram: { id: kind === "half" ? "half-wave" : "bridge" },
-      parts: [num("u", "$U_{O(AV)}$", UO, "V", "V"), num("i", "$I_{D(AV)}$", s.ID, "A", "mA"), num("ur", "$U_{RM}$", s.URM, "V", "V")],
+      parts: [
+        num("u", "$U_{O(AV)}$", UO, "V", "V", {
+          mistakes: [
+            { value: rectifiedAverage(U2, kind === "half" ? "bridge" : "half"), tag: "rectifier-type", message: kind === "half" ? "半波整流只有半个周期有输出：系数是 0.45，不是 0.9。" : "桥式整流两个半周都有输出：系数是 0.9，不是 0.45。" },
+            { value: Math.SQRT2 * U2, tag: "rms-peak-avg", message: "这是峰值；没有滤波电容时，输出平均值远小于峰值。" },
+          ],
+        }),
+        num("i", "$I_{D(AV)}$", s.ID, "A", "mA", {
+          mistakes: [
+            kind === "half"
+              ? { value: UO / RL / 2, tag: "rectifier-type" as const, message: "半波整流只有一只二极管，它的平均电流就等于负载电流。" }
+              : { value: UO / RL, tag: "rectifier-type" as const, message: "桥式整流中每只二极管只在半个周期导通：$I_{D(AV)}=I_{O(AV)}/2$。" },
+          ],
+        }),
+        num("ur", "$U_{RM}$", s.URM, "V", "V", {
+          mistakes: [
+            { value: U2, tag: "rms-peak-avg", message: "最大反向电压是峰值 $\\sqrt2U_2$，不是有效值。" },
+            ...(kind === "bridge" ? [{ value: 2 * Math.SQRT2 * U2, tag: "rectifier-type" as const, message: "$2\\sqrt2U_2$ 是全波（中心抽头）整流的二极管反向电压；桥式整流为 $\\sqrt2U_2$。" }] : []),
+          ],
+        }),
+      ],
       hints: ["半波 0.45、桥式 0.9；桥式二极管电流减半；$U_{RM}=\\sqrt2U_2$。"],
       solution: `$U_{O(AV)}=${V(UO)}$，$I_D=${A(s.ID)}$，$U_{RM}=${V(s.URM)}$。`,
     };
@@ -63,7 +83,15 @@ const rectQ: QuestionTemplate[] = [
     const U2 = UO / rectifiedAverage(1, kind);
     return {
       prompt: `要求${kind === "half" ? "半波" : "桥式"}整流（无滤波）输出平均电压 ${UO} V，变压器副边电压有效值应为多少？`,
-      parts: [num("u2", "$U_2$", U2, "V", "V")],
+      parts: [
+        num("u2", "$U_2$", U2, "V", "V", {
+          mistakes: [
+            { value: UO / rectifiedAverage(1, kind === "half" ? "bridge" : "half"), tag: "rectifier-type", message: kind === "half" ? "半波整流 $U_{O(AV)}\\approx0.45U_2$，所以 $U_2=U_O/0.45$。" : "桥式整流 $U_{O(AV)}\\approx0.9U_2$，所以 $U_2=U_O/0.9$。" },
+            { value: UO / 1.2, tag: "rectifier-type", message: `1.2 是**电容滤波**时的估算系数；本题无滤波，系数是 ${kind === "half" ? "0.45" : "0.9"}。` },
+            { value: UO / Math.SQRT2, tag: "rms-peak-avg", message: `无滤波时输出平均值不是峰值：$U_{O(AV)}=${kind === "half" ? "0.45" : "0.9"}U_2$。` },
+          ],
+        }),
+      ],
       hints: ["$U_{O(AV)}=0.45U_2$ 或 $0.9U_2$。"],
       solution: `$U_2=${V(U2)}$。`,
     };
@@ -154,7 +182,17 @@ const filterQ: QuestionTemplate[] = [
     return {
       prompt: `桥式整流电容滤波电路，$U_2=${U2}$ V，${Number.isFinite(RL) ? `负载 $R_L=${R(RL)}$ 且满足 $R_LC\\ge(3\\sim5)T/2$` : "负载开路"}。估算输出电压。`,
       diagram: { id: "cap-filter" },
-      parts: [num("u", "$U_{O(AV)}$", UO, "V", "V", { tol: 0.03 })],
+      parts: [
+        num("u", "$U_{O(AV)}$", UO, "V", "V", {
+          tol: 0.03,
+          mistakes: [
+            { value: 0.9 * U2, tag: "rectifier-type", message: "接了滤波电容，输出接近峰值：带载时 $U_O\\approx1.2U_2$，空载时 $U_O=\\sqrt2U_2$；$0.9U_2$ 是无滤波的结果。" },
+            Number.isFinite(RL)
+              ? { value: Math.SQRT2 * U2, tag: "rectifier-type" as const, message: "带负载时电容会放电，$U_O\\approx1.2U_2$；$\\sqrt2U_2$ 只在空载时成立。" }
+              : { value: 1.2 * U2, tag: "rectifier-type" as const, message: "负载开路时电容不放电，$U_O=\\sqrt2U_2$；$1.2U_2$ 是带载时的估算。" },
+          ],
+        }),
+      ],
       hints: ["带载：$\\approx1.2U_2$；空载：$\\sqrt2U_2$。"],
       solution: `$U_{O(AV)}\\approx${V(UO)}$。`,
     };
@@ -165,7 +203,7 @@ const filterQ: QuestionTemplate[] = [
     const C = (k * 0.01) / RL; // R_LC = k·T/2，T = 20 ms
     return {
       prompt: `50 Hz 电网，桥式整流电容滤波，负载 $R_L=${R(RL)}$。按 $R_LC=${k}\\cdot\\frac T2$ 选电容，C 为多少？`,
-      parts: [num("c", "$C$", C, "F", "µF")],
+      parts: [num("c", "$C$", C, "F", "µF", { mistakes: [{ value: 2 * C, tag: "rectifier-type", message: "桥式整流的放电间隔是 $T/2=10$ ms（纹波频率 100 Hz），不是 $T$。" }] })],
       hints: ["$T=20$ ms，$C=\\dfrac{k\\,T/2}{R_L}$。"],
       solution: `$C=${formatSI(C, "F")}$（取标称值，耐压 > $\\sqrt2U_2$）。`,
     };
@@ -177,7 +215,7 @@ const filterQ: QuestionTemplate[] = [
     const e = capFilterEstimate(U2, RL, C);
     return {
       prompt: `桥式整流电容滤波，$U_2=${U2}$ V，$R_L=${R(RL)}$，$C=${formatSI(C, "F")}$，电网 50 Hz。用 $U_O\\approx1.2U_2$ 与 $\\Delta U\\approx I_O/(2fC)$ 估算纹波峰峰值。`,
-      parts: [num("r", "$\\Delta U$", e.ripple, "V", "V", { tol: 0.03, mistakes: [{ value: e.ripple * 2, message: "桥式整流纹波频率是 100 Hz，放电时间约为 10 ms：$\\Delta U\\approx I_O/(2fC)$。" }] })],
+      parts: [num("r", "$\\Delta U$", e.ripple, "V", "V", { tol: 0.03, mistakes: [{ value: e.ripple * 2, tag: "rectifier-type", message: "桥式整流纹波频率是 100 Hz，放电时间约为 10 ms：$\\Delta U\\approx I_O/(2fC)$。" }] })],
       hints: ["$I_O=1.2U_2/R_L$。"],
       solution: `$I_O=${A(e.UO / RL)}$，$\\Delta U\\approx${V(e.ripple)}$。`,
     };
@@ -256,7 +294,14 @@ const zrQ: QuestionTemplate[] = [
     return {
       prompt: `稳压管稳压电路：整流滤波输出 $U_I=${UI}$ V（电网波动 ±10%），$U_Z=${UZ}$ V，$I_{Z\\min}=5$ mA，$I_{ZM}=${sig(IZM * 1e3, 2)}$ mA，负载电流 0～${sig(ILmax * 1e3, 2)} mA。求 R 的范围。`,
       diagram: { id: "zener-reg" },
-      parts: [num("a", "$R_{\\min}$", r.Rmin, "Ω", "Ω"), num("b", "$R_{\\max}$", r.Rmax, "Ω", "Ω")],
+      parts: [
+        num("a", "$R_{\\min}$", r.Rmin, "Ω", "Ω", { mistakes: [{ value: (UI - UZ) / IZM, tag: "worst-case", message: "求 $R_{\\min}$ 要用最高输入电压 $1.1U_I$（此时稳压管电流最大）。" }] }),
+        num("b", "$R_{\\max}$", r.Rmax, "Ω", "Ω", {
+          mistakes: [
+            { value: (UI * 0.9 - UZ) / ILmax, tag: "kcl-split", message: "还要给稳压管留出 $I_{Z\\min}$：$R_{\\max}=\\dfrac{U_{I\\min}-U_Z}{I_{Z\\min}+I_{L\\max}}$。" },
+          ],
+        }),
+      ],
       hints: ["$U_{I\\max}=1.1U_I$，$U_{I\\min}=0.9U_I$。"],
       solution: `$${sig(r.Rmin, 3)}\\,\\Omega\\le R\\le${sig(r.Rmax, 3)}\\,\\Omega$${r.feasible ? "" : "（无解）"}。`,
     };
@@ -309,7 +354,7 @@ const zrQ: QuestionTemplate[] = [
     const IL = (UImin - UZ) / R0 - 5e-3;
     return {
       prompt: `稳压管稳压电路 $U_Z=6$ V、$I_{Z\\min}=5$ mA，$R=${R(R0)}$，输入最低 ${UImin} V。负载电流最大允许多少？`,
-      parts: [num("i", "$I_{L\\max}$", IL, "A", "mA", { mistakes: [{ value: (UImin - UZ) / R0, message: "还要留出 $I_{Z\\min}$ 给稳压管。" }] })],
+      parts: [num("i", "$I_{L\\max}$", IL, "A", "mA", { mistakes: [{ value: (UImin - UZ) / R0, tag: "kcl-split", message: "还要留出 $I_{Z\\min}$ 给稳压管。" }] })],
       hints: ["$I_{L\\max}=\\frac{U_{I\\min}-U_Z}{R}-I_{Z\\min}$。"],
       solution: `$I_{L\\max}=${A(IL)}$。`,
     };
@@ -367,7 +412,7 @@ const srQ: QuestionTemplate[] = [
     return {
       prompt: `串联型稳压电路 $U_Z=${UZ}$ V，采样电阻 $R_1=${R(R1)}$（上）、$R_P=${R(RP)}$（电位器）、$R_2=${R(R2)}$（下）。求输出电压的调节范围。`,
       diagram: { id: "series-reg", labels: { R1: R(R1), R2: R(R2) } },
-      parts: [num("a", "$U_{O\\min}$", r.min, "V", "V"), num("b", "$U_{O\\max}$", r.max, "V", "V", { mistakes: [{ value: (UZ * (R1 + RP + R2)) / (R2 + RP), message: "滑动端在最下端时 $R_P''=0$，$U_{O\\max}=U_Z(R_1+R_P+R_2)/R_2$。" }] })],
+      parts: [num("a", "$U_{O\\min}$", r.min, "V", "V"), num("b", "$U_{O\\max}$", r.max, "V", "V", { mistakes: [{ value: (UZ * (R1 + RP + R2)) / (R2 + RP), tag: "worst-case", message: "滑动端在最下端时 $R_P''=0$，$U_{O\\max}=U_Z(R_1+R_P+R_2)/R_2$。" }] })],
       hints: ["$U_O=\\dfrac{R_1+R_P+R_2}{R_2+R_P''}U_Z$。"],
       solution: `$${sig(r.min, 3)}$ V～$${sig(r.max, 3)}$ V。`,
     };
@@ -379,7 +424,13 @@ const srQ: QuestionTemplate[] = [
     const res = seriesRegulator(UI, RL, { ...DEFAULT_SR, k });
     return {
       prompt: `串联型稳压电路（$U_Z=6$ V，$R_1=R_P=R_2=1$ kΩ，放大器增益很大），电位器滑动端${k === 0 ? "在最下端" : k === 1 ? "在最上端" : "在中点"}，$U_I=${UI}$ V，$R_L=${R(RL)}$。求 $U_O$、负载电流与调整管功耗。`,
-      parts: [num("u", "$U_O$", res.UO, "V", "V", { tol: 0.01 }), num("i", "$I_L$", res.IL, "A", "mA", { tol: 0.01 }), num("p", "$P_C$", res.PT, "W", "W", { tol: 0.02 })],
+      parts: [num("u", "$U_O$", res.UO, "V", "V", { tol: 0.01 }), num("i", "$I_L$", res.IL, "A", "mA", { tol: 0.01 }), num("p", "$P_C$", res.PT, "W", "W", {
+          tol: 0.02,
+          mistakes: [
+            { value: UI * res.IL, tag: "kvl-loop", message: "调整管上的电压是 $U_{CE}=U_I-U_O$，不是 $U_I$。" },
+            { value: res.UO * res.IL, tag: "power-balance", message: "这是负载得到的功率；调整管功耗是 $P_C=(U_I-U_O)I_L$。" },
+          ],
+        })],
       hints: ["$U_O\\approx U_Z/F$，$P_C=(U_I-U_O)I_L$。"],
       solution: `$U_O=${V(res.UO)}$，$I_L=${A(res.IL)}$，$P_C=${formatSI(res.PT, "W")}$。`,
     };
@@ -390,7 +441,14 @@ const srQ: QuestionTemplate[] = [
     const UO = adjustable317(R1, R2, 1.25, 0);
     return {
       prompt: `LM317 可调稳压器，输出端与调整端之间 $R_1=${R1}\\,\\Omega$，调整端对地 $R_2=${R(R2)}$，基准 1.25 V，忽略调整端电流。求输出电压。`,
-      parts: [num("u", "$U_O$", UO, "V", "V")],
+      parts: [
+        num("u", "$U_O$", UO, "V", "V", {
+          mistakes: [
+            { value: 1.25 * (R2 / R1), tag: "opamp-config", message: "$U_O=1.25\\left(1+\\dfrac{R_2}{R_1}\\right)$ V，别漏了“1+”。" },
+            { value: 1.25 * (1 + R1 / R2), tag: "ratio-inverted", message: "$R_1$ 接在输出端与调整端之间，流过它的电流是 $1.25\\,\\mathrm V/R_1$，所以是 $R_2/R_1$，别倒过来。" },
+          ],
+        }),
+      ],
       hints: ["$U_O=1.25(1+R_2/R_1)$。"],
       solution: `$U_O=${V(UO)}$。`,
     };
@@ -420,7 +478,7 @@ const srQ: QuestionTemplate[] = [
     const ILmax = g.pick([0.5, 1]);
     return {
       prompt: `串联型稳压电路输出 ${sig(range.min, 3)}～${sig(range.max, 3)} V 可调，最大负载电流 ${ILmax} A，输入电压最高 ${UImax} V。按“最坏情况”估算调整管的最大功耗。`,
-      parts: [num("p", "$P_{C\\max}$", (UImax - range.min) * ILmax, "W", "W", { tol: 0.02, mistakes: [{ value: (UImax - range.max) * ILmax, message: "最坏情况是输出调到**最低**时，调整管压降最大。" }] })],
+      parts: [num("p", "$P_{C\\max}$", (UImax - range.min) * ILmax, "W", "W", { tol: 0.02, mistakes: [{ value: (UImax - range.max) * ILmax, tag: "worst-case", message: "最坏情况是输出调到**最低**时，调整管压降最大。" }] })],
       hints: ["$P_C=(U_{I\\max}-U_{O\\min})I_{L\\max}$。"],
       solution: `$P_{C\\max}=(${UImax}-${sig(range.min, 3)})\\times${ILmax}=${formatSI((UImax - range.min) * ILmax, "W")}$，需加散热器。`,
     };

@@ -49,7 +49,7 @@ const condQ: QuestionTemplate[] = [
     const opts = ["能起振（幅度增大，需稳幅）", "处于平衡（理论上维持，但不能自行起振）", "不能起振（停振）"];
     return {
       prompt: `文氏桥振荡器中选频网络在 $f_0$ 处 $F=1/3$，同相放大电路的电压放大倍数为 ${A}。电路将：`,
-      choice: { options: opts, answer: ans, why: opts.map((_, i) => (i === ans ? `正确：$AF=${sig(af, 3)}$。` : `$AF=${sig(af, 3)}$。`)) },
+      choice: { wrongTag: "osc-condition", options: opts, answer: ans, why: opts.map((_, i) => (i === ans ? `正确：$AF=${sig(af, 3)}$。` : `$AF=${sig(af, 3)}$。`)) },
       hints: ["计算 $AF$ 并与 1 比较。"],
       solution: `$AF=${sig(af, 3)}$，${opts[ans]}。`,
     };
@@ -144,7 +144,7 @@ const rcQ: QuestionTemplate[] = [
     return {
       prompt: `文氏桥振荡器 $R=${R(Rr)}$，$C=${F(C)}$。求振荡频率。`,
       diagram: { id: "wien-bridge" },
-      parts: [num("f", "$f_0$", f0, "Hz", "Hz", { mistakes: [{ value: 1 / (Rr * C), message: "这是角频率，$f_0=1/(2\\pi RC)$。" }] })],
+      parts: [num("f", "$f_0$", f0, "Hz", "Hz", { mistakes: [{ value: 1 / (Rr * C), tag: "omega-f", message: "这是角频率，$f_0=1/(2\\pi RC)$。" }] })],
       hints: ["$f_0=\\dfrac{1}{2\\pi RC}$。"],
       solution: `$f_0=${Hz(f0)}$。`,
     };
@@ -154,7 +154,7 @@ const rcQ: QuestionTemplate[] = [
     return {
       prompt: `文氏桥振荡器同相放大器的 $R_1=${R(R1)}$。为满足平衡条件，$R_f$ 应为多少？为保证起振，$R_f$ 应满足什么条件（填临界值）？`,
       diagram: { id: "wien-bridge", labels: { R1: R(R1) } },
-      parts: [num("rf", "$R_f$（平衡）", 2 * R1, "Ω", "kΩ", { mistakes: [{ value: 3 * R1, message: "$A=1+R_f/R_1=3$，所以 $R_f=2R_1$。" }] })],
+      parts: [num("rf", "$R_f$（平衡）", 2 * R1, "Ω", "kΩ", { mistakes: [{ value: 3 * R1, tag: "opamp-config", message: "$A=1+R_f/R_1=3$，所以 $R_f=2R_1$。" }] })],
       hints: ["$1+R_f/R_1=3$。"],
       solution: `$R_f=2R_1=${R(2 * R1)}$；起振要求 $R_f$ 略大于 ${R(2 * R1)}。`,
     };
@@ -251,7 +251,7 @@ const lcQ: QuestionTemplate[] = [
     return {
       prompt: `三点式振荡电路的交流通路中，b–e 间为${name(be)}、c–e 间为${name(ce)}、b–c 间为${name(bc)}。判断：`,
       diagram: { id: "three-point", labels: { be, ce, bc } },
-      choice: { options: choices, answer: ans, why: choices.map((_, i) => (i === ans ? "正确：射同基反。" : "按“射同基反”检查：与发射极相连的两个电抗同性质，b–c 间异性质。")) },
+      choice: { wrongTag: "osc-condition", options: choices, answer: ans, why: choices.map((_, i) => (i === ans ? "正确：射同基反。" : "按“射同基反”检查：与发射极相连的两个电抗同性质，b–c 间异性质。")) },
       hints: ["射同基反。"],
       solution: choices[ans] + "。",
     };
@@ -275,7 +275,7 @@ const lcQ: QuestionTemplate[] = [
     const f = colpittsF0(L, C1, C2);
     return {
       prompt: `电容三点式振荡电路 $L=${formatSI(L, "H")}$，$C_1=${F(C1)}$，$C_2=${F(C2)}$。求振荡频率。`,
-      parts: [num("f", "$f_0$", f, "Hz", "MHz", { mistakes: [{ value: lcF0(L, C1 + C2), message: "回路中 $C_1$、$C_2$ 是串联的：$C=\\frac{C_1C_2}{C_1+C_2}$。" }] })],
+      parts: [num("f", "$f_0$", f, "Hz", "MHz", { mistakes: [{ value: lcF0(L, C1 + C2), tag: "series-parallel", message: "回路中 $C_1$、$C_2$ 是串联的：$C=\\frac{C_1C_2}{C_1+C_2}$。" }] })],
       hints: ["$C=\\frac{C_1C_2}{C_1+C_2}$。"],
       solution: `$f_0=${Hz(f)}$。`,
     };
@@ -288,7 +288,7 @@ const lcQ: QuestionTemplate[] = [
     const f = hartleyF0(L1, L2, M, C);
     return {
       prompt: `电感三点式振荡电路 $L_1=${formatSI(L1, "H")}$，$L_2=${formatSI(L2, "H")}$，互感 $M=${formatSI(M, "H")}$，$C=${F(C)}$。求振荡频率。`,
-      parts: [num("f", "$f_0$", f, "Hz", "MHz", { mistakes: [{ value: lcF0(L1 + L2, C), message: "还要计入互感：$L=L_1+L_2+2M$。" }] })],
+      parts: [num("f", "$f_0$", f, "Hz", "MHz", { mistakes: [{ value: lcF0(L1 + L2, C), tag: "series-parallel", message: "还要计入互感：$L=L_1+L_2+2M$。" }] })],
       hints: ["$L=L_1+L_2+2M$。"],
       solution: `$f_0=${Hz(f)}$。`,
     };

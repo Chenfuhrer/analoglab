@@ -58,7 +58,7 @@ const carriersQ: QuestionTemplate[] = [
     const Eg = MATERIAL[m].Eg;
     return {
       prompt: `${MATERIAL[m].name}的禁带宽度 $E_g=${Eg}$ eV。按 $n_i=BT^{3/2}e^{-E_g/(2kT)}$（$k=8.62\\times10^{-5}$ eV/K，忽略 $E_g$ 随温度的变化），温度从 ${Ta} K 升高到 ${Tb} K 时，$n_i$ 变为原来的多少倍？`,
-      parts: [num("k", "$n_i(T_2)/n_i(T_1)$", k, "1", "3.5", { mistakes: [{ value: Math.exp((Eg / (2 * 8.617e-5)) * (1 / Ta - 1 / Tb)), message: "漏掉了 $T^{3/2}$ 因子：两个温度之比的 1.5 次方也要乘上。" }, { value: Math.exp((Eg / 8.617e-5) * (1 / Ta - 1 / Tb)) * Math.pow(Tb / Ta, 1.5), message: "指数里应为 $E_g/(2kT)$，你可能漏掉了因子 2。" }] })],
+      parts: [num("k", "$n_i(T_2)/n_i(T_1)$", k, "1", "3.5", { mistakes: [{ value: Math.exp((Eg / (2 * 8.617e-5)) * (1 / Ta - 1 / Tb)), tag: "scaling-law", message: "漏掉了 $T^{3/2}$ 因子：两个温度之比的 1.5 次方也要乘上。" }, { value: Math.exp((Eg / 8.617e-5) * (1 / Ta - 1 / Tb)) * Math.pow(Tb / Ta, 1.5), tag: "scaling-law", message: "指数里应为 $E_g/(2kT)$，你可能漏掉了因子 2。" }] })],
       hints: ["写出 $n_i(T_2)/n_i(T_1)$，常数 $B$ 消去。", "$\\dfrac{n_i(T_2)}{n_i(T_1)}=\\left(\\dfrac{T_2}{T_1}\\right)^{3/2}\\exp\\!\\left[\\dfrac{E_g}{2k}\\left(\\dfrac1{T_1}-\\dfrac1{T_2}\\right)\\right]$"],
       solution: `约 ${sig(k, 3)} 倍。`,
     };
@@ -68,7 +68,7 @@ const carriersQ: QuestionTemplate[] = [
     const T = tc + 273.15;
     return {
       prompt: `求温度为 ${tc} °C 时的温度电压当量 $U_T=kT/q$（$k/q=8.62\\times10^{-5}$ V/K）。`,
-      parts: [num("UT", "$U_T$", thermalVoltage(T), "V", "mV", { mistakes: [{ value: thermalVoltage(tc), message: "温度要用热力学温度（K）：$T=t+273.15$。" }] })],
+      parts: [num("UT", "$U_T$", thermalVoltage(T), "V", "mV", { mistakes: [{ value: thermalVoltage(tc), tag: "unit-convert", message: "温度要用热力学温度（K）：$T=t+273.15$。" }] })],
       hints: ["$U_T=\\dfrac{k}{q}T$，$T$ 用开尔文。"],
       solution: `$U_T=8.62\\times10^{-5}\\times${sig(T, 5)}\\approx${V(thermalVoltage(T))}$。`,
     };
@@ -109,7 +109,7 @@ const carriersQ: QuestionTemplate[] = [
     const f = ni / MATERIAL.Si.atoms;
     return {
       prompt: `硅原子密度约 $5\\times10^{22}$ cm⁻³，${T} K 时 $n_i=${sci(ni)}$ cm⁻³。平均每多少个硅原子中有一个价电子被激发成自由电子？（答案取 $N/n_i$ 的数量级即可，精确到 5%）`,
-      parts: [num("N", "$N/n_i$", 1 / f, "1", "3.6e12", { tol: 0.05, mistakes: [{ value: f, message: "这是比例 $n_i/N$，题目问的是它的倒数。" }] })],
+      parts: [num("N", "$N/n_i$", 1 / f, "1", "3.6e12", { tol: 0.05, mistakes: [{ value: f, tag: "ratio-inverted", message: "这是比例 $n_i/N$，题目问的是它的倒数。" }] })],
       hints: ["每个原子最多贡献一个电子–空穴对，所以比例就是 $n_i/N$。"],
       solution: `约 $${sci(1 / f)}$ 个原子中才有一个。`,
     };
@@ -156,7 +156,7 @@ const dopedQ: QuestionTemplate[] = [
     const cp = carriers(0, NA, 300);
     return {
       prompt: `300 K 时硅的 $n_i=1.4\\times10^{10}$ cm⁻³。在本征硅中掺入浓度为 $${sci(ND)}$ cm⁻³ 的${isP ? "硼（三价）" : "磷（五价）"}，杂质全部电离。求少子浓度（只填数值，单位 cm⁻³，如 2e4）。`,
-      parts: [num("p", "少子浓度", isP ? cp.minority : c.minority, "1", "1.96e4", { mistakes: [{ value: 1.4e10, message: "少子浓度不是 $n_i$：掺杂后 $np=n_i^2$，多子增大，少子相应减小。" }, { value: 1.4e10 / ND, message: "应为 $n_i^2/N$，不是 $n_i/N$。" }] })],
+      parts: [num("p", "少子浓度", isP ? cp.minority : c.minority, "1", "1.96e4", { mistakes: [{ value: 1.4e10, tag: "mass-action", message: "少子浓度不是 $n_i$：掺杂后 $np=n_i^2$，多子增大，少子相应减小。" }, { value: 1.4e10 / ND, tag: "mass-action", message: "应为 $n_i^2/N$，不是 $n_i/N$。" }] })],
       hints: ["多子浓度 ≈ 掺杂浓度。", "质量作用定律：$np=n_i^2$。"],
       solution: `多子 $\\approx${sci(ND)}$，少子 $=n_i^2/N=${sci(isP ? cp.minority : c.minority)}$ cm⁻³。`,
     };
@@ -168,8 +168,8 @@ const dopedQ: QuestionTemplate[] = [
     return {
       prompt: `硅中同时掺入施主 $N_D=${sci(ND)}$ cm⁻³ 和受主 $N_A=${sci(NA)}$ cm⁻³（300 K，$n_i=1.4\\times10^{10}$ cm⁻³，全部电离）。求电子浓度与空穴浓度（只填数值，单位 cm⁻³）。`,
       parts: [
-        num("n", "电子浓度 $n$", c.n, "1", "4e15", { mistakes: [{ value: ND, message: "受主会“抵消”一部分施主：净施主浓度为 $N_D-N_A$。" }] }),
-        num("p", "空穴浓度 $p$", c.p, "1", "5e4", { mistakes: [{ value: NA, message: "受主提供的空穴被施主电子复合掉了，空穴是少子：$p=n_i^2/n$。" }] }),
+        num("n", "电子浓度 $n$", c.n, "1", "4e15", { mistakes: [{ value: ND, tag: "mass-action", message: "受主会“抵消”一部分施主：净施主浓度为 $N_D-N_A$。" }] }),
+        num("p", "空穴浓度 $p$", c.p, "1", "5e4", { mistakes: [{ value: NA, tag: "mass-action", message: "受主提供的空穴被施主电子复合掉了，空穴是少子：$p=n_i^2/n$。" }] }),
       ],
       hints: ["电中性：$n+N_A=p+N_D$，且 $p\\ll n$。", "$n\\approx N_D-N_A$，$p=n_i^2/n$。"],
       solution: `$n\\approx N_D-N_A=${sci(c.n)}$，$p=${sci(c.p)}$ cm⁻³，仍为 N 型。`,
@@ -180,7 +180,7 @@ const dopedQ: QuestionTemplate[] = [
     const k = (intrinsicDensity(Tb) / intrinsicDensity(300)) ** 2;
     return {
       prompt: `某 N 型硅的掺杂浓度远大于 $n_i$。温度从 300 K 升高到 ${Tb} K 时，若此温度下硅的 $n_i$ 增大为原来的 ${sig(Math.sqrt(k), 3)} 倍，少子浓度增大为原来的多少倍？多子浓度呢？`,
-      parts: [num("p", "少子倍数", k, "1", "4.2", { mistakes: [{ value: Math.sqrt(k), message: "少子 $p=n_i^2/N_D\\propto n_i^2$，倍数要平方。" }] }), num("n", "多子倍数", 1, "1", "1", { tol: 0.01 })],
+      parts: [num("p", "少子倍数", k, "1", "4.2", { mistakes: [{ value: Math.sqrt(k), tag: "mass-action", message: "少子 $p=n_i^2/N_D\\propto n_i^2$，倍数要平方。" }] }), num("n", "多子倍数", 1, "1", "1", { tol: 0.01 })],
       hints: ["多子 ≈ $N_D$，与温度基本无关。", "少子 $=n_i^2/N_D$。"],
       solution: `少子增大约 ${sig(k, 3)} 倍，多子基本不变（1 倍）。`,
     };
@@ -203,6 +203,7 @@ const dopedQ: QuestionTemplate[] = [
     return {
       prompt: `硅中掺入施主 $N_D=${sci(a)}$ cm⁻³、受主 $N_A=${sci(b)}$ cm⁻³（300 K）。下列判断正确的是：`,
       choice: {
+        wrongTag: "mass-action",
         options: [`N 型；多子浓度约 $${sci(Math.abs(a - b))}$ cm⁻³`, `P 型；多子浓度约 $${sci(Math.abs(a - b))}$ cm⁻³`, "近似本征", `${a > b ? "P" : "N"} 型；多子浓度约 $${sci(a + b)}$ cm⁻³`],
         answer: ans,
         why: [
@@ -275,7 +276,7 @@ const pnQ: QuestionTemplate[] = [
     const i = shockley(u, Is, 0.026);
     return {
       prompt: `某硅二极管反向饱和电流 $I_S=${formatSI(Is, "A")}$，取 $U_T=26$ mV。求正向电压 $u=${u}$ V 时的电流。`,
-      parts: [num("i", "$i$", i, "A", "mA", { mistakes: [{ value: Is * Math.exp(u / 0.0259), message: "注意按题目给定的 $U_T=26$ mV 计算（指数对 $U_T$ 很敏感）。" }] })],
+      parts: [num("i", "$i$", i, "A", "mA", { mistakes: [{ value: Is * Math.exp(u / 0.0259), tag: "scaling-law", message: "注意按题目给定的 $U_T=26$ mV 计算（指数对 $U_T$ 很敏感）。" }] })],
       hints: ["$i=I_S(e^{u/U_T}-1)\\approx I_Se^{u/U_T}$。"],
       solution: `$i\\approx${formatSI(Is, "A")}\\times e^{${u}/0.026}=${A(i)}$。`,
     };
@@ -309,7 +310,7 @@ const pnQ: QuestionTemplate[] = [
     const dU2 = shockleyVoltage(back * 1e-3, 1e-14) - shockleyVoltage(1e-3, 1e-14);
     return {
       prompt: `取 $U_T=26$ mV，二极管工作在正向导通区（$u\\gg U_T$）。(1) 正向电压增加 ${sig(dU * 1e3, 3)} mV，电流变为原来的多少倍？(2) 要使电流变为原来的 ${back} 倍，电压需增加多少？`,
-      parts: [num("k", "(1) 倍数", k, "1", "10"), num("du", "(2) 电压增量", dU2, "V", "mV", { mistakes: [{ value: 0.026 * back, message: "电压增量是 $U_T\\ln k$，不是 $kU_T$。" }] })],
+      parts: [num("k", "(1) 倍数", k, "1", "10"), num("du", "(2) 电压增量", dU2, "V", "mV", { mistakes: [{ value: 0.026 * back, tag: "scaling-law", message: "电压增量是 $U_T\\ln k$，不是 $kU_T$。" }] })],
       hints: ["$i_2/i_1=e^{(u_2-u_1)/U_T}$。", "反过来：$\\Delta u=U_T\\ln(i_2/i_1)$。"],
       solution: `(1) $e^{${sig(dU * 1e3, 3)}/26}\\approx${sig(k, 3)}$ 倍；(2) $26\\,\\mathrm{mV}\\times\\ln${back}\\approx${formatSI(dU2, "V")}$。`,
     };
@@ -322,7 +323,7 @@ const pnQ: QuestionTemplate[] = [
     const w = depletionWidth(-UR, NA, ND);
     return {
       prompt: `突变结 $W\\propto\\sqrt{U_{ho}-u}$。某硅结 $U_{ho}=${sig(w0.Vbi, 3)}$ V，零偏时耗尽层宽度为 $W_0$。外加反向电压 ${UR} V 时，耗尽层宽度是 $W_0$ 的多少倍？势垒电容约变为零偏时的多少倍？`,
-      parts: [num("w", "$W/W_0$", w.W / w0.W, "1", "2.5"), num("c", "$C_b/C_{b0}$", w0.W / w.W, "1", "0.4", { mistakes: [{ value: w.W / w0.W, message: "势垒电容 $\\propto1/W$（平板电容：极板间距越大电容越小）。" }] })],
+      parts: [num("w", "$W/W_0$", w.W / w0.W, "1", "2.5"), num("c", "$C_b/C_{b0}$", w0.W / w.W, "1", "0.4", { mistakes: [{ value: w.W / w0.W, tag: "scaling-law", message: "势垒电容 $\\propto1/W$（平板电容：极板间距越大电容越小）。" }] })],
       hints: ["反偏时 $u=-U_R$，所以 $U_{ho}-u=U_{ho}+U_R$。", "势垒电容类似平板电容，$C_b\\propto1/W$。"],
       solution: `$W/W_0=\\sqrt{(${sig(w0.Vbi, 3)}+${UR})/${sig(w0.Vbi, 3)}}\\approx${sig(w.W / w0.W, 3)}$，$C_b$ 约为原来的 ${sig(w0.W / w.W, 3)} 倍。`,
     };
@@ -387,7 +388,7 @@ const diodeQ: QuestionTemplate[] = [
     return {
       prompt: `直流电压源 $V=${Vs}$ V、电阻 $R=${R(Rr)}$ 与硅二极管串联（二极管正偏）。用恒压降模型（$U_{on}=0.7$ V）求二极管电流 $I_D$ 和电阻两端电压 $U_R$。`,
       diagram: { id: "diode-series", labels: { V: `${Vs} V`, R: R(Rr) } },
-      parts: [num("ID", "$I_D$", c.ID, "A", "mA", { mistakes: [{ value: Vs / Rr, message: "这是理想模型的结果；题目要求恒压降模型，应先减去 0.7 V。" }] }), num("UR", "$U_R$", Vs - 0.7, "V", "V", { mistakes: [{ value: Vs, message: "电阻上的电压是 $V-U_{on}$。" }] })],
+      parts: [num("ID", "$I_D$", c.ID, "A", "mA", { mistakes: [{ value: Vs / Rr, tag: "diode-drop", message: "这是理想模型的结果；题目要求恒压降模型，应先减去 0.7 V。" }] }), num("UR", "$U_R$", Vs - 0.7, "V", "V", { mistakes: [{ value: Vs, tag: "diode-drop", message: "电阻上的电压是 $V-U_{on}$。" }] })],
       hints: ["二极管导通时用 0.7 V 的电压源代替。", "KVL：$V=I_DR+0.7$。"],
       solution: `$I_D=(${Vs}-0.7)/${R(Rr)}=${A(c.ID)}$，$U_R=${V(Vs - 0.7)}$。`,
     };
@@ -397,7 +398,7 @@ const diodeQ: QuestionTemplate[] = [
     const rd = dynamicResistance(I, { n: 1, T: 300 });
     return {
       prompt: `二极管静态电流 $I_D=${A(I)}$，室温下 $U_T\\approx26$ mV。求其小信号动态电阻 $r_d$。`,
-      parts: [num("rd", "$r_d$", rd, "Ω", "Ω", { alts: [0.026 / I], mistakes: [{ value: 0.7 / I, message: "这是直流电阻 $U_D/I_D$；动态电阻为 $U_T/I_D$。" }] })],
+      parts: [num("rd", "$r_d$", rd, "Ω", "Ω", { alts: [0.026 / I], mistakes: [{ value: 0.7 / I, tag: "static-vs-dynamic", message: "这是直流电阻 $U_D/I_D$；动态电阻为 $U_T/I_D$。" }] })],
       hints: ["$r_d=U_T/I_D$。"],
       solution: `$r_d=26\\,\\mathrm{mV}/${A(I)}\\approx${R(0.026 / I)}$。`,
     };
@@ -419,7 +420,7 @@ const diodeQ: QuestionTemplate[] = [
       parts: [
         num("UO", "$U_O$", r.UO, "V", "V", {
           tol: 0.02,
-          mistakes: kind === "and" ? [{ value: Math.max(a, b) + 0.7, message: "两只管子不会都导通：输入较低的那只开路电压更大，优先导通并把输出钳住。" }] : [{ value: Math.min(a, b) - 0.7, message: "输入较高的那只优先导通。" }],
+          mistakes: kind === "and" ? [{ value: Math.max(a, b) + 0.7, tag: "device-state", message: "两只管子不会都导通：输入较低的那只开路电压更大，优先导通并把输出钳住。" }] : [{ value: Math.min(a, b) - 0.7, tag: "device-state", message: "输入较高的那只优先导通。" }],
         }),
       ],
       hints: ["先断开两只二极管，求各自阳极–阴极开路电压。", "开路电压最大的管子优先导通；导通后再检查另一只。"],
@@ -434,7 +435,7 @@ const diodeQ: QuestionTemplate[] = [
     const nOn = r.on.filter(Boolean).length;
     return {
       prompt: `三只硅二极管的阳极分别接 $U_1=${ins[0]}$ V、$U_2=${ins[1]}$ V、$U_3=${ins[2]}$ V，阴极连在一起作为输出端，经电阻接到 $${Vref}$ V 电源。二极管用恒压降模型（0.7 V），输出端开路。求 $U_O$ 以及导通的二极管只数。`,
-      parts: [num("UO", "$U_O$", r.UO, "V", "V", { tol: 0.02, mistakes: [{ value: Math.max(...ins), message: "导通的二极管有 0.7 V 压降：$U_O=U_{\\max}-0.7$。" }] }), num("n", "导通只数", nOn, "1", "1", { tol: 0.01 })],
+      parts: [num("UO", "$U_O$", r.UO, "V", "V", { tol: 0.02, mistakes: [{ value: Math.max(...ins), tag: "diode-drop", message: "导通的二极管有 0.7 V 压降：$U_O=U_{\\max}-0.7$。" }] }), num("n", "导通只数", nOn, "1", "1", { tol: 0.01 })],
       hints: ["阴极公共端被电阻拉向负电源。断开所有二极管时，每只的开路电压 = 输入 − 负电源电压。", "阳极电位最高的管子优先导通，$U_O=U_{\\max}-0.7$；其余输入较低的管子反偏（若有输入相等则同时导通）。"],
       solution: `$U_O=${V(r.UO)}$，导通 ${nOn} 只。`,
     };
@@ -448,7 +449,7 @@ const diodeQ: QuestionTemplate[] = [
     const ud = (um * rd) / (Rr + rd);
     return {
       prompt: `直流电压源 $V=${Vdc}$ V 与一个幅值 ${sig(um * 1e3, 2)} mV 的正弦信号源串联，经电阻 $R=${R(Rr)}$ 加在硅二极管上（正偏）。(1) 用恒压降模型求静态电流 $I_D$；(2) 用小信号模型（$U_T$≈26 mV）求二极管两端交流电压的幅值。`,
-      parts: [num("ID", "(1) $I_D$", c.ID, "A", "mA"), num("ud", "(2) $U_{dm}$", ud, "V", "mV", { tol: 0.04, mistakes: [{ value: um, message: "交流信号按 $r_d$ 与 $R$ 分压，二极管只分到很小一部分。" }] })],
+      parts: [num("ID", "(1) $I_D$", c.ID, "A", "mA"), num("ud", "(2) $U_{dm}$", ud, "V", "mV", { tol: 0.04, mistakes: [{ value: um, tag: "static-vs-dynamic", message: "交流信号按 $r_d$ 与 $R$ 分压，二极管只分到很小一部分。" }] })],
       hints: ["先直流：$I_D=(V-0.7)/R$。", "再交流：直流源置零，二极管换成 $r_d=U_T/I_D$，与 $R$ 分压。"],
       solution: `$I_D=${A(c.ID)}$，$r_d\\approx${R(rd)}$，$U_{dm}=${sig(um * 1e3, 2)}\\,\\mathrm{mV}\\times\\dfrac{r_d}{R+r_d}\\approx${formatSI(ud, "V")}$。`,
     };
@@ -513,7 +514,7 @@ const zenerQ: QuestionTemplate[] = [
       return {
         prompt: `稳压管稳压电路中 $U_I=${UI}$ V，$R=${R(Rr)}$，$R_L=${R(RL)}$，稳压管 $U_Z=${UZ}$ V（理想击穿特性），$I_{Z\\min}=5$ mA，$I_{ZM}=50$ mA。求 $I_R$、$I_L$ 和 $I_Z$。`,
         diagram: { id: "zener-reg", labels: { UI: `${UI} V`, R: R(Rr), RL: R(RL), Z: `${UZ} V` } },
-        parts: [num("IR", "$I_R$", r.IR, "A", "mA"), num("IL", "$I_L$", r.IL, "A", "mA"), num("IZ", "$I_Z$", r.IZ, "A", "mA", { mistakes: [{ value: r.IR, message: "$I_R$ 中有一部分流向负载：$I_Z=I_R-I_L$。" }] })],
+        parts: [num("IR", "$I_R$", r.IR, "A", "mA"), num("IL", "$I_L$", r.IL, "A", "mA"), num("IZ", "$I_Z$", r.IZ, "A", "mA", { mistakes: [{ value: r.IR, tag: "kcl-split", message: "$I_R$ 中有一部分流向负载：$I_Z=I_R-I_L$。" }] })],
         hints: ["先假设稳压管已击穿：$U_O=U_Z$。", "$I_R=(U_I-U_Z)/R$，$I_L=U_Z/R_L$，$I_Z=I_R-I_L$。最后检查 $I_{Z\\min}\\le I_Z\\le I_{ZM}$。"],
         solution: `$I_R=${A(r.IR)}$，$I_L=${A(r.IL)}$，$I_Z=${A(r.IZ)}$，在允许范围内，能正常稳压。`,
       };
@@ -533,8 +534,8 @@ const zenerQ: QuestionTemplate[] = [
       return {
         prompt: `稳压管 $U_Z=${UZ}$ V，$I_{Z\\min}=5$ mA，$I_{ZM}=${sig(IZM * 1e3, 2)}$ mA。输入电压 $U_I=${UIn}$ V 且有 ±${d * 100}% 的波动，负载电流在 0–${sig(ILmax * 1e3, 2)} mA 之间变化。求限流电阻的最小值和最大值。`,
         parts: [
-          num("Rmin", "$R_{\\min}$", r.Rmin, "Ω", "Ω", { mistakes: [{ value: (UIn * (1 + d) - UZ) / (IZM + ILmax), message: "求 $R_{\\min}$ 的最不利情况是**空载**（$I_L=0$），此时稳压管电流最大。" }] }),
-          num("Rmax", "$R_{\\max}$", r.Rmax, "Ω", "Ω", { mistakes: [{ value: (UIn * (1 - d) - UZ) / 5e-3, message: "求 $R_{\\max}$ 时负载取最重（$I_{L\\max}$），分母为 $I_{Z\\min}+I_{L\\max}$。" }] }),
+          num("Rmin", "$R_{\\min}$", r.Rmin, "Ω", "Ω", { mistakes: [{ value: (UIn * (1 + d) - UZ) / (IZM + ILmax), tag: "worst-case", message: "求 $R_{\\min}$ 的最不利情况是**空载**（$I_L=0$），此时稳压管电流最大。" }] }),
+          num("Rmax", "$R_{\\max}$", r.Rmax, "Ω", "Ω", { mistakes: [{ value: (UIn * (1 - d) - UZ) / 5e-3, tag: "worst-case", message: "求 $R_{\\max}$ 时负载取最重（$I_{L\\max}$），分母为 $I_{Z\\min}+I_{L\\max}$。" }] }),
         ],
         hints: ["$R_{\\min}$：$U_I$ 最大、$I_L$ 最小时 $I_Z\\le I_{ZM}$。", "$R_{\\max}$：$U_I$ 最小、$I_L$ 最大时 $I_Z\\ge I_{Z\\min}$。"],
         solution: `$${sig(r.Rmin, 3)}\\,\\Omega\\le R\\le${sig(r.Rmax, 3)}\\,\\Omega$。`,
@@ -551,7 +552,7 @@ const zenerQ: QuestionTemplate[] = [
     return {
       prompt: `$U_I=${UI}$ V，$R=${R(Rr)}$，$R_L=${R(RL)}$，稳压管 $U_Z=${UZ}$ V（理想击穿特性）。求输出电压 $U_O$。`,
       diagram: { id: "zener-reg", labels: { UI: `${UI} V`, R: R(Rr), RL: R(RL), Z: `${UZ} V` } },
-      parts: [num("UO", "$U_O$", r.UO, "V", "V", { mistakes: r.status === "off" ? [{ value: UZ, message: "先判断稳压管是否击穿：断开稳压管时 $R_L$ 上的电压只有 $U_IR_L/(R+R_L)$，低于 $U_Z$，稳压管未击穿。" }] : [{ value: (UI * RL) / (Rr + RL), message: "断开稳压管时的分压值超过 $U_Z$，稳压管已击穿，输出被稳定在 $U_Z$。" }] })],
+      parts: [num("UO", "$U_O$", r.UO, "V", "V", { mistakes: r.status === "off" ? [{ value: UZ, tag: "device-state", message: "先判断稳压管是否击穿：断开稳压管时 $R_L$ 上的电压只有 $U_IR_L/(R+R_L)$，低于 $U_Z$，稳压管未击穿。" }] : [{ value: (UI * RL) / (Rr + RL), tag: "device-state", message: "断开稳压管时的分压值超过 $U_Z$，稳压管已击穿，输出被稳定在 $U_Z$。" }] })],
       hints: ["先断开稳压管，求 $R_L$ 上的开路电压。", "开路电压 > $U_Z$ 才击穿；否则输出就是分压值。"],
       solution: r.status === "off" ? `开路电压 $${sig((UI * RL) / (Rr + RL), 3)}$ V $<U_Z$，稳压管未击穿，$U_O=${V(r.UO)}$。` : `开路电压超过 $U_Z$，稳压管击穿，$U_O=${V(r.UO)}$。`,
     };
@@ -564,7 +565,7 @@ const zenerQ: QuestionTemplate[] = [
     const IL = (UI - UZ) / Rr - IZmin;
     return {
       prompt: `稳压管 $U_Z=${UZ}$ V，$I_{Z\\min}=${sig(IZmin * 1e3, 2)}$ mA，$U_I=${UI}$ V，$R=${R(Rr)}$。为保证稳压，负载电流最大不能超过多少？对应的最小负载电阻是多少？`,
-      parts: [num("IL", "$I_{L\\max}$", IL, "A", "mA"), num("RL", "$R_{L\\min}$", UZ / IL, "Ω", "Ω", { mistakes: [{ value: (UI - UZ) / IL, message: "$R_L$ 上的电压是 $U_Z$，不是 $U_I-U_Z$。" }] })],
+      parts: [num("IL", "$I_{L\\max}$", IL, "A", "mA"), num("RL", "$R_{L\\min}$", UZ / IL, "Ω", "Ω", { mistakes: [{ value: (UI - UZ) / IL, tag: "kvl-loop", message: "$R_L$ 上的电压是 $U_Z$，不是 $U_I-U_Z$。" }] })],
       hints: ["$I_Z=I_R-I_L\\ge I_{Z\\min}$，$I_R=(U_I-U_Z)/R$ 与负载无关（稳压时）。"],
       solution: `$I_{L\\max}=${A(IL)}$，$R_{L\\min}=${R(UZ / IL)}$。`,
     };
@@ -632,7 +633,7 @@ const dcQ: QuestionTemplate[] = [
     return {
       prompt: `单相${kind === "half" ? "半波" : "桥式"}整流电路，变压器副边电压有效值 $U_2=${U2}$ V，负载 $R_L=${R(RL)}$，二极管为理想二极管。求输出电压平均值 $U_{O(AV)}$ 与负载电流平均值 $I_{O(AV)}$。`,
       diagram: { id: kind === "half" ? "half-wave" : "bridge", labels: { U2: `${U2} V`, RL: R(RL) } },
-      parts: [num("UO", "$U_{O(AV)}$", UO, "V", "V", { mistakes: [{ value: rectifiedAverage(U2, kind === "half" ? "bridge" : "half"), message: kind === "half" ? "半波整流只有半个周期有输出：系数是 0.45，不是 0.9。" : "桥式整流两个半周都有输出：系数是 0.9。" }, { value: Math.SQRT2 * U2, message: "这是峰值；没有滤波电容时输出平均值远小于峰值。" }] }), num("IO", "$I_{O(AV)}$", UO / RL, "A", "mA")],
+      parts: [num("UO", "$U_{O(AV)}$", UO, "V", "V", { mistakes: [{ value: rectifiedAverage(U2, kind === "half" ? "bridge" : "half"), tag: "rectifier-type", message: kind === "half" ? "半波整流只有半个周期有输出：系数是 0.45，不是 0.9。" : "桥式整流两个半周都有输出：系数是 0.9。" }, { value: Math.SQRT2 * U2, tag: "rms-peak-avg", message: "这是峰值；没有滤波电容时输出平均值远小于峰值。" }] }), num("IO", "$I_{O(AV)}$", UO / RL, "A", "mA")],
       hints: ["半波 $0.45U_2$，桥式 $0.9U_2$。"],
       solution: `$U_{O(AV)}=${V(UO)}$，$I_{O(AV)}=${A(UO / RL)}$。`,
     };
@@ -644,7 +645,7 @@ const dcQ: QuestionTemplate[] = [
     return {
       prompt: `单相桥式整流电路，$U_2=${U2}$ V（有效值），$R_L=${R(RL)}$，理想二极管。求每只二极管的平均电流 $I_D$ 与最大反向电压 $U_{RM}$。`,
       diagram: { id: "bridge", labels: { U2: `${U2} V`, RL: R(RL) } },
-      parts: [num("ID", "$I_D$", s.ID, "A", "mA", { mistakes: [{ value: s.ID * 2, message: "每只二极管只在半个周期导通：平均电流是负载电流的一半。" }] }), num("URM", "$U_{RM}$", s.URM, "V", "V", { mistakes: [{ value: U2, message: "反向电压的最大值是峰值 $\\sqrt2U_2$，不是有效值。" }, { value: 2 * s.URM, message: "那是全波（中心抽头）整流的二极管反向电压；桥式整流为 $\\sqrt2U_2$。" }] })],
+      parts: [num("ID", "$I_D$", s.ID, "A", "mA", { mistakes: [{ value: s.ID * 2, tag: "rectifier-type", message: "每只二极管只在半个周期导通：平均电流是负载电流的一半。" }] }), num("URM", "$U_{RM}$", s.URM, "V", "V", { mistakes: [{ value: U2, tag: "rms-peak-avg", message: "反向电压的最大值是峰值 $\\sqrt2U_2$，不是有效值。" }, { value: 2 * s.URM, tag: "rectifier-type", message: "那是全波（中心抽头）整流的二极管反向电压；桥式整流为 $\\sqrt2U_2$。" }] })],
       hints: ["$I_{O(AV)}=0.9U_2/R_L$，$I_D=I_{O(AV)}/2$。", "截止的二极管两端承受副边电压的峰值。"],
       solution: `$I_D=${A(s.ID)}$，$U_{RM}=\\sqrt2\\times${U2}=${V(s.URM)}$。`,
     };
@@ -659,7 +660,7 @@ const dcQ: QuestionTemplate[] = [
     return {
       prompt: `图示上限幅电路中 $E=${E}$ V，二极管${real ? "为硅管（恒压降 0.7 V）" : "为理想二极管"}，输出端空载。输入 $u_I=${Um}\\sin\\omega t$ V。求 (1) 输出电压的最大值；(2) 当 $u_I=${sig(ui, 3)}$ V 时的输出电压。`,
       diagram: { id: "clip-shunt", labels: { E: `${E} V` } },
-      parts: [num("max", "(1) $u_{O\\max}$", E + Uon, "V", "V", { mistakes: real ? [{ value: E, message: "导通的二极管上还有 0.7 V 压降：限幅电平为 $E+U_{on}$。" }] : [] }), num("uo", "(2) $u_O$", out, "V", "V", { tol: 0.02 })],
+      parts: [num("max", "(1) $u_{O\\max}$", E + Uon, "V", "V", { mistakes: real ? [{ value: E, tag: "diode-drop", message: "导通的二极管上还有 0.7 V 压降：限幅电平为 $E+U_{on}$。" }] : [] }), num("uo", "(2) $u_O$", out, "V", "V", { tol: 0.02 })],
       hints: ["$u_I>E+U_{on}$ 时二极管导通，输出被钳住；否则二极管截止，$u_O=u_I$。"],
       solution: `限幅电平 $E+U_{on}=${V(E + Uon)}$；$u_I=${sig(ui, 3)}$ V 时 $u_O=${V(out)}$。`,
     };
@@ -687,7 +688,7 @@ const dcQ: QuestionTemplate[] = [
     return {
       prompt: `正峰钳位电路：输入 $u_I=${Um}\\sin\\omega t$ V 经电容 $C$ 接到输出端，输出端对地接二极管（阳极在输出端）${E ? `，二极管阴极经 ${E} V 电源（正极朝上）接地` : "，阴极接地"}，负载 $R$ 满足 $RC\\gg T$。二极管${Uon ? "为硅管（恒压降 0.7 V）" : "为理想二极管"}。求稳态时电容上的电压、输出电压的最大值与最小值。`,
       diagram: E === 0 ? { id: "clamp" } : undefined,
-      parts: [num("uC", "$u_C$", s.uC, "V", "V", { tol: 0.02 }), num("max", "$u_{O\\max}$", s.max, "V", "V", { tol: 0.02 }), num("min", "$u_{O\\min}$", s.min, "V", "V", { tol: 0.02, mistakes: [{ value: -Um, message: "整个波形下移了 $u_C$，负峰也一起下移：$u_{O\\min}=-U_m-u_C$。" }] })],
+      parts: [num("uC", "$u_C$", s.uC, "V", "V", { tol: 0.02 }), num("max", "$u_{O\\max}$", s.max, "V", "V", { tol: 0.02 }), num("min", "$u_{O\\min}$", s.min, "V", "V", { tol: 0.02, mistakes: [{ value: -Um, tag: "waveform", message: "整个波形下移了 $u_C$，负峰也一起下移：$u_{O\\min}=-U_m-u_C$。" }] })],
       hints: ["稳态时二极管只在正峰附近短暂导通，把正峰钳在 $E+U_{on}$。", "$u_C=U_m-(E+U_{on})$，$u_O=u_I-u_C$。"],
       solution: `$u_C=${V(s.uC)}$，$u_O$ 在 ${V(s.min)} 到 ${V(s.max)} 之间，峰峰值仍为 ${V(2 * Um)}。`,
     };
@@ -698,7 +699,7 @@ const dcQ: QuestionTemplate[] = [
     const ex = rectifiedAverageNumeric(U2, kind, 0.7);
     return {
       prompt: `低压整流时二极管压降不可忽略。单相${kind === "half" ? "半波" : "桥式"}整流，$U_2=${U2}$ V（有效值），二极管用恒压降模型（0.7 V），电阻负载。求输出电压平均值（精确到 3%）。`,
-      parts: [num("UO", "$U_{O(AV)}$", ex, "V", "V", { mistakes: [{ value: rectifiedAverage(U2, kind), message: "这是理想二极管的结果；本题要计入导通压降。" }, { value: rectifiedAverage(U2, kind) - (kind === "half" ? 0.7 : 1.4), message: "不能直接从平均值中减去管压降：二极管只在 $u_2$ 超过压降时导通，导通角小于 180°，要按截短的正弦波重新积分。" }] })],
+      parts: [num("UO", "$U_{O(AV)}$", ex, "V", "V", { mistakes: [{ value: rectifiedAverage(U2, kind), tag: "diode-drop", message: "这是理想二极管的结果；本题要计入导通压降。" }, { value: rectifiedAverage(U2, kind) - (kind === "half" ? 0.7 : 1.4), tag: "approx-misuse", message: "不能直接从平均值中减去管压降：二极管只在 $u_2$ 超过压降时导通，导通角小于 180°，要按截短的正弦波重新积分。" }] })],
       hints: [`${kind === "half" ? "只有 $u_2>0.7$ V 时导通" : "每个半周有两只管子导通，$|u_2|>1.4$ V 时才有输出"}。`, "设导通区间为 $\\theta_1<\\omega t<\\pi-\\theta_1$，其中 $\\sin\\theta_1=U_D/(\\sqrt2U_2)$，对 $(\\sqrt2U_2\\sin\\theta-U_D)$ 积分后除以周期。"],
       solution: `约 ${V(ex)}（理想二极管时为 ${V(rectifiedAverage(U2, kind))}）。`,
     };

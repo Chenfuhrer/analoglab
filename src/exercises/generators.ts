@@ -112,8 +112,8 @@ const fixedQ: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "IBQ", label: "$I_{BQ}$", expected: a.dc.IBQ, dim: "A", unitHint: "µA", mistakes: [{ value: IBwrong, message: "看起来忘记减去 $U_{BEQ}$：基极回路 KVL 为 $V_{CC}=I_{BQ}R_b+U_{BEQ}$。" }] },
-          { id: "ICQ", label: "$I_{CQ}$", expected: a.dc.ICQ, dim: "A", unitHint: "mA", mistakes: [{ value: p.beta * IBwrong, message: "$I_{BQ}$ 算错了（漏减 $U_{BEQ}$），导致 $I_{CQ}$ 偏大。" }] },
+          { id: "IBQ", label: "$I_{BQ}$", expected: a.dc.IBQ, dim: "A", unitHint: "µA", mistakes: [{ value: IBwrong, tag: "forget-ube", message: "看起来忘记减去 $U_{BEQ}$：基极回路 KVL 为 $V_{CC}=I_{BQ}R_b+U_{BEQ}$。" }] },
+          { id: "ICQ", label: "$I_{CQ}$", expected: a.dc.ICQ, dim: "A", unitHint: "mA", mistakes: [{ value: p.beta * IBwrong, tag: "forget-ube", message: "$I_{BQ}$ 算错了（漏减 $U_{BEQ}$），导致 $I_{CQ}$ 偏大。" }] },
           {
             id: "UCEQ",
             label: "$U_{CEQ}$",
@@ -121,8 +121,8 @@ const fixedQ: QuestionTemplate = {
             dim: "V",
             unitHint: "V",
             mistakes: [
-              { value: p.VCC - p.beta * IBwrong * p.Rc, message: "$I_{CQ}$ 偏大（漏减 $U_{BEQ}$）导致 $U_{CEQ}$ 偏小。" },
-              { value: a.dc.ICQ * p.Rc, message: "这是 $R_c$ 上的压降 $I_{CQ}R_c$，$U_{CEQ}=V_{CC}-I_{CQ}R_c$。" },
+              { value: p.VCC - p.beta * IBwrong * p.Rc, tag: "forget-ube", message: "$I_{CQ}$ 偏大（漏减 $U_{BEQ}$）导致 $U_{CEQ}$ 偏小。" },
+              { value: a.dc.ICQ * p.Rc, tag: "kvl-loop", message: "这是 $R_c$ 上的压降 $I_{CQ}R_c$，$U_{CEQ}=V_{CC}-I_{CQ}R_c$。" },
             ],
           },
         ],
@@ -168,8 +168,8 @@ const fixedDyn: QuestionTemplate = {
             dim: "Ω",
             unitHint: "kΩ",
             mistakes: [
-              { value: rbpe, message: "漏掉了基区体电阻 $r_{bb'}$：$r_{be}=r_{bb'}+(1+\\beta)U_T/I_{EQ}$。" },
-              { value: p.rbb + re, message: "$U_T/I_{EQ}$ 是发射极动态电阻，从基极看进去要乘以 $(1+\\beta)$。" },
+              { value: rbpe, tag: "rbe-formula", message: "漏掉了基区体电阻 $r_{bb'}$：$r_{be}=r_{bb'}+(1+\\beta)U_T/I_{EQ}$。" },
+              { value: p.rbb + re, tag: "rbe-formula", message: "$U_T/I_{EQ}$ 是发射极动态电阻，从基极看进去要乘以 $(1+\\beta)$。" },
             ],
           },
           {
@@ -180,12 +180,12 @@ const fixedDyn: QuestionTemplate = {
             unitHint: "−50",
             signMessage: SIGN_MSG,
             mistakes: [
-              { value: (-p.beta * p.Rc) / ac.rbe, message: "这是空载放大倍数：接了负载后交流负载应为 $R_L'=R_c\\para R_L$。" },
-              { value: (-p.beta * ac.RLp) / rbpe, message: "$r_{be}$ 漏掉了 $r_{bb'}$。" },
+              { value: (-p.beta * p.Rc) / ac.rbe, tag: "load-ignored", message: "这是空载放大倍数：接了负载后交流负载应为 $R_L'=R_c\\para R_L$。" },
+              { value: (-p.beta * ac.RLp) / rbpe, tag: "rbe-formula", message: "$r_{be}$ 漏掉了 $r_{bb'}$。" },
             ],
           },
-          { id: "Ri", label: "$R_i$", expected: ac.Ri, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: p.Rb, message: "$R_i$ 是 $R_b$ 与 $r_{be}$ 的**并联**，不是 $R_b$ 本身。" }, { value: p.Rb + ac.rbe, message: "交流通路中 $R_b$ 与 $r_{be}$ 是并联关系（$R_b$ 上端交流接地）。" }] },
-          { id: "Ro", label: "$R_o$", expected: ac.Ro, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: ac.RLp, message: "求输出电阻时必须**断开负载** $R_L$：$R_o\\approx R_c$。" }] },
+          { id: "Ri", label: "$R_i$", expected: ac.Ri, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: p.Rb, tag: "series-parallel", message: "交流通路中 $R_b$ 上端接地，$R_b$ 与 $r_{be}$ 是**并联**：$R_i=R_b\\para r_{be}$，结果接近较小的 $r_{be}$，而不是 $R_b$ 或 $R_b+r_{be}$。" }] },
+          { id: "Ro", label: "$R_o$", expected: ac.Ro, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: ac.RLp, tag: "io-resistance", message: "求输出电阻时必须**断开负载** $R_L$：$R_o\\approx R_c$。" }] },
         ],
       },
       hints: [
@@ -221,9 +221,9 @@ const dividerQ: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "UBQ", label: "$U_{BQ}$", expected: est.UBQ, alts: [a.dc.UBQ], dim: "V", unitHint: "V", mistakes: [{ value: (p.VCC * p.Rb2) / (p.Rb1 + p.Rb2), message: "分压比写反了：$U_{BQ}$ 取下偏置电阻 $R_{b1}$ 上的电压。" }] },
-          { id: "IEQ", label: "$I_{EQ}$", expected: est.IEQ, alts: [a.dc.IEQ], dim: "A", unitHint: "mA", mistakes: [{ value: est.UBQ / RE, message: "忘记减去 $U_{BEQ}$：$I_{EQ}=(U_{BQ}-U_{BEQ})/R_e$。" }, { value: (est.UBQ - 0.7) / p.Re2, message: "直流通路中 $C_e$ 开路，$R_{e1}$、$R_{e2}$ 都在发射极回路里。" }] },
-          { id: "UCEQ", label: "$U_{CEQ}$", expected: est.UCEQ, alts: [a.dc.UCEQ], dim: "V", unitHint: "V", tol: 0.04, mistakes: [{ value: p.VCC - est.IEQ * p.Rc, message: "漏掉了射极电阻上的压降：$U_{CEQ}\\approx V_{CC}-I_{EQ}(R_c+R_e)$。" }] },
+          { id: "UBQ", label: "$U_{BQ}$", expected: est.UBQ, alts: [a.dc.UBQ], dim: "V", unitHint: "V", mistakes: [{ value: (p.VCC * p.Rb2) / (p.Rb1 + p.Rb2), tag: "divider-swap", message: "分压比写反了：$U_{BQ}$ 取下偏置电阻 $R_{b1}$ 上的电压。" }] },
+          { id: "IEQ", label: "$I_{EQ}$", expected: est.IEQ, alts: [a.dc.IEQ], dim: "A", unitHint: "mA", mistakes: [{ value: est.UBQ / RE, tag: "forget-ube", message: "忘记减去 $U_{BEQ}$：$I_{EQ}=(U_{BQ}-U_{BEQ})/R_e$。" }, { value: (est.UBQ - 0.7) / p.Re2, tag: "bypass-cap", message: "直流通路中 $C_e$ 开路，$R_{e1}$、$R_{e2}$ 都在发射极回路里。" }] },
+          { id: "UCEQ", label: "$U_{CEQ}$", expected: est.UCEQ, alts: [a.dc.UCEQ], dim: "V", unitHint: "V", tol: 0.04, mistakes: [{ value: p.VCC - est.IEQ * p.Rc, tag: "kvl-loop", message: "漏掉了射极电阻上的压降：$U_{CEQ}\\approx V_{CC}-I_{EQ}(R_c+R_e)$。" }] },
         ],
       },
       hints: [
@@ -269,8 +269,8 @@ const roMeasure: QuestionTemplate = {
             dim: "Ω",
             unitHint: "kΩ",
             mistakes: [
-              { value: (Uo1 / UoR) * RL, message: "公式少了“−1”：由 $U_o=U_o'\\frac{R_L}{R_o+R_L}$ 得 $R_o=\\left(\\frac{U_o'}{U_o}-1\\right)R_L$。" },
-              { value: (UoR / Uo1) * RL, message: "比值倒过来了。" },
+              { value: (Uo1 / UoR) * RL, tag: "io-resistance", message: "公式少了“−1”：由 $U_o=U_o'\\frac{R_L}{R_o+R_L}$ 得 $R_o=\\left(\\frac{U_o'}{U_o}-1\\right)R_L$。" },
+              { value: (UoR / Uo1) * RL, tag: "ratio-inverted", message: "比值倒过来了。" },
             ],
           },
         ],
@@ -310,9 +310,8 @@ const uom: QuestionTemplate = {
             dim: "V",
             unitHint: "V",
             mistakes: [
-              { value: wrongLimit, message: "两个限制取了较大的那个：$U_{om}$ 取 $U_{CEQ}-U_{CES}$ 与 $I_{CQ}R_L'$ 中的**较小值**。" },
-              { value: dc.ICQ * p.Rc, message: "截止限应使用交流负载 $R_L'=R_c\\para R_L$，而不是 $R_c$。" },
-              { value: Math.min(dc.UCEQ, dc.ICQ * ac.RLp), message: "饱和一侧要减去 $U_{CES}$。" },
+              { value: wrongLimit, tag: "worst-case", message: "两个限制取了较大的那个：$U_{om}$ 取 $U_{CEQ}-U_{CES}$ 与 $I_{CQ}R_L'$ 中的**较小值**。" },
+              { value: dc.ICQ * p.Rc, tag: "load-ignored", message: "截止限应使用交流负载 $R_L'=R_c\\para R_L$，而不是 $R_c$。" },
             ],
           },
         ],
@@ -347,7 +346,7 @@ const aus: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "Ri", label: "$R_i$", expected: a.ac.Ri, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: a.ac.Ri + p.Rs, message: "$R_i$ 的定义不包含信号源内阻 $R_s$。" }] },
+          { id: "Ri", label: "$R_i$", expected: a.ac.Ri, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: a.ac.Ri + p.Rs, tag: "io-resistance", message: "$R_i$ 的定义不包含信号源内阻 $R_s$。" }] },
           {
             id: "Aus",
             label: "$\\dot A_{us}$",
@@ -355,7 +354,7 @@ const aus: QuestionTemplate = {
             dim: "1",
             unitHint: "−30",
             signMessage: SIGN_MSG,
-            mistakes: [{ value: a.ac.Au, message: "这是 $\\dot A_u$；$\\dot A_{us}$ 还要乘以分压比 $R_i/(R_s+R_i)$。" }],
+            mistakes: [{ value: a.ac.Au, tag: "source-resistance", message: "这是 $\\dot A_u$；$\\dot A_{us}$ 还要乘以分压比 $R_i/(R_s+R_i)$。" }],
           },
         ],
       },
@@ -488,7 +487,7 @@ const dividerFull: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "rbe", label: "$r_{be}$", expected: a.ac.rbe, alts: [rbeEst], dim: "Ω", unitHint: "kΩ", tol, mistakes: [{ value: ((1 + p.beta) * p.UT) / a.dc.IEQ, message: "漏掉了 $r_{bb'}$。" }] },
+          { id: "rbe", label: "$r_{be}$", expected: a.ac.rbe, alts: [rbeEst], dim: "Ω", unitHint: "kΩ", tol, mistakes: [{ value: ((1 + p.beta) * p.UT) / a.dc.IEQ, tag: "rbe-formula", message: "漏掉了 $r_{bb'}$。" }] },
           {
             id: "Au",
             label: "$\\dot A_u$",
@@ -499,14 +498,14 @@ const dividerFull: QuestionTemplate = {
             tol,
             signMessage: SIGN_MSG,
             mistakes: [
-              { value: (-p.beta * a.ac.RLp) / a.ac.rbe, message: "$R_{e1}$ 没有被旁路，仍在交流通路中：分母应为 $r_{be}+(1+\\beta)R_{e1}$。" },
-              { value: open.ac.Au, message: "$C_e$ 把 $R_{e2}$ 交流短路了，只有 $R_{e1}$ 留在交流通路中。" },
-              { value: (-p.beta * p.Rc) / (a.ac.rbe + (1 + p.beta) * p.Re1), message: "忽略了负载：应使用 $R_L'=R_c\\para R_L$。" },
+              { value: (-p.beta * a.ac.RLp) / a.ac.rbe, tag: "bypass-cap", message: "$R_{e1}$ 没有被旁路，仍在交流通路中：分母应为 $r_{be}+(1+\\beta)R_{e1}$。" },
+              { value: open.ac.Au, tag: "bypass-cap", message: "$C_e$ 把 $R_{e2}$ 交流短路了，只有 $R_{e1}$ 留在交流通路中。" },
+              { value: (-p.beta * p.Rc) / (a.ac.rbe + (1 + p.beta) * p.Re1), tag: "load-ignored", message: "忽略了负载：应使用 $R_L'=R_c\\para R_L$。" },
             ],
           },
-          { id: "Ri", label: "$R_i$", expected: a.ac.Ri, alts: [RiEst], dim: "Ω", unitHint: "kΩ", tol, mistakes: [{ value: par(a.dc.RB, a.ac.rbe), message: "从基极看进去的电阻应为 $r_{be}+(1+\\beta)R_{e1}$。" }] },
-          { id: "Ro", label: "$R_o$", expected: a.ac.Ro, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: a.ac.RLp, message: "求 $R_o$ 时要断开 $R_L$。" }] },
-          { id: "Au2", label: "$C_e$ 开路：$\\dot A_u'$", expected: open.ac.Au, alts: [AuOpenEst], dim: "1", unitHint: "−1.5", tol, signMessage: SIGN_MSG, mistakes: [{ value: -a.ac.RLp / (p.Re1 + p.Re2), message: "这是近似式 $-R_L'/R_e$ 的结果，精度不够（与精确值相差超过 4%）；请用完整公式。", tol: 0.01 }] },
+          { id: "Ri", label: "$R_i$", expected: a.ac.Ri, alts: [RiEst], dim: "Ω", unitHint: "kΩ", tol, mistakes: [{ value: par(a.dc.RB, a.ac.rbe), tag: "bypass-cap", message: "从基极看进去的电阻应为 $r_{be}+(1+\\beta)R_{e1}$。" }] },
+          { id: "Ro", label: "$R_o$", expected: a.ac.Ro, dim: "Ω", unitHint: "kΩ", mistakes: [{ value: a.ac.RLp, tag: "io-resistance", message: "求 $R_o$ 时要断开 $R_L$。" }] },
+          { id: "Au2", label: "$C_e$ 开路：$\\dot A_u'$", expected: open.ac.Au, alts: [AuOpenEst], dim: "1", unitHint: "−1.5", tol, signMessage: SIGN_MSG },
           { id: "Ri2", label: "$C_e$ 开路：$R_i'$", expected: open.ac.Ri, alts: [par(a.dc.RB, rbeEst + (1 + p.beta) * (p.Re1 + p.Re2))], dim: "Ω", unitHint: "kΩ", tol },
         ],
       },
@@ -550,7 +549,7 @@ const designRb: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "ICQ", label: "$I_{CQ}$", expected: IC, dim: "A", unitHint: "mA", mistakes: [{ value: UCE / Rc, message: "$R_c$ 上的电压是 $V_{CC}-U_{CEQ}$，不是 $U_{CEQ}$。" }] },
+          { id: "ICQ", label: "$I_{CQ}$", expected: IC, dim: "A", unitHint: "mA", mistakes: [{ value: UCE / Rc, tag: "kvl-loop", message: "$R_c$ 上的电压是 $V_{CC}-U_{CEQ}$，不是 $U_{CEQ}$。" }] },
           {
             id: "Rb",
             label: "$R_b$",
@@ -558,7 +557,7 @@ const designRb: QuestionTemplate = {
             dim: "Ω",
             unitHint: "kΩ",
             mistakes: [
-              { value: VCC / IB, message: "忘记减去 $U_{BEQ}$：$R_b=(V_{CC}-U_{BEQ})/I_{BQ}$。" },
+              { value: VCC / IB, tag: "forget-ube", message: "忘记减去 $U_{BEQ}$：$R_b=(V_{CC}-U_{BEQ})/I_{BQ}$。" },
             ],
           },
         ],
@@ -594,9 +593,9 @@ const maxInput: QuestionTemplate = {
       body: {
         kind: "numeric",
         parts: [
-          { id: "Uom", label: "$U_{om}$", expected: ac.Uom, dim: "V", unitHint: "V", mistakes: [{ value: Math.max(ac.UomCut, ac.UomSat), message: "应取饱和限与截止限中的**较小值**。" }, { value: dc.ICQ * p.Rc, message: "截止限用交流负载 $R_L'$，不是 $R_c$。" }] },
-          { id: "Aus", label: "$|\\dot A_{us}|$", expected: Math.abs(ac.Aus), dim: "1", unitHint: "30", mistakes: [{ value: Math.abs(ac.Au), message: "这是 $|\\dot A_u|$，还要乘 $R_i/(R_s+R_i)$。" }] },
-          { id: "Usm", label: "$U_{sm,\\max}$", expected: ac.UsmMax, dim: "V", unitHint: "mV", mistakes: [{ value: ac.Uom / Math.abs(ac.Au), message: "这是 $u_i$ 的最大幅值；信号源还要多承担 $R_s$ 上的压降，应除以 $|\\dot A_{us}|$。" }] },
+          { id: "Uom", label: "$U_{om}$", expected: ac.Uom, dim: "V", unitHint: "V", mistakes: [{ value: Math.max(ac.UomCut, ac.UomSat), tag: "worst-case", message: "应取饱和限与截止限中的**较小值**。" }, { value: dc.ICQ * p.Rc, tag: "load-ignored", message: "截止限用交流负载 $R_L'$，不是 $R_c$。" }] },
+          { id: "Aus", label: "$|\\dot A_{us}|$", expected: Math.abs(ac.Aus), dim: "1", unitHint: "30", mistakes: [{ value: Math.abs(ac.Au), tag: "source-resistance", message: "这是 $|\\dot A_u|$，还要乘 $R_i/(R_s+R_i)$。" }] },
+          { id: "Usm", label: "$U_{sm,\\max}$", expected: ac.UsmMax, dim: "V", unitHint: "mV", mistakes: [{ value: ac.Uom / Math.abs(ac.Au), tag: "source-resistance", message: "这是 $u_i$ 的最大幅值；信号源还要多承担 $R_s$ 上的压降，应除以 $|\\dot A_{us}|$。" }] },
         ],
       },
       hints: [

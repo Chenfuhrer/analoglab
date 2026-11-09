@@ -58,21 +58,31 @@ const signalsQ: QuestionTemplate[] = [
     const d = decompose(u1, u2);
     return {
       prompt: `差分放大电路两个输入端的电压分别为 $u_{I1}=${u1}$ V、$u_{I2}=${u2}$ V。求差模输入电压 $u_{Id}$ 和共模输入电压 $u_{Ic}$。`,
-      parts: [num("d", "$u_{Id}$", d.uId, "V", "V", { tol: 0.01, mistakes: [{ value: d.uId / 2, message: "差模电压是两者之差 $u_{I1}-u_{I2}$（每端各 ±$u_{Id}/2$）。" }] }), num("c", "$u_{Ic}$", d.uIc, "V", "V", { tol: 0.01, mistakes: [{ value: u1 + u2, message: "共模电压是两者的平均值，要除以 2。" }] })],
+      parts: [num("d", "$u_{Id}$", d.uId, "V", "V", { tol: 0.01, mistakes: [{ value: d.uId / 2, tag: "diff-cm", message: "差模电压是两者之差 $u_{I1}-u_{I2}$（每端各 ±$u_{Id}/2$）。" }] }), num("c", "$u_{Ic}$", d.uIc, "V", "V", { tol: 0.01, mistakes: [{ value: u1 + u2, tag: "diff-cm", message: "共模电压是两者的平均值，要除以 2。" }] })],
       hints: ["$u_{Id}=u_{I1}-u_{I2}$，$u_{Ic}=(u_{I1}+u_{I2})/2$。"],
       solution: `$u_{Id}=${V(d.uId)}$，$u_{Ic}=${V(d.uIc)}$。`,
     };
   }),
   gen({ id: "ds-g-output", level: 2, topic: T1, title: "已知 A_d、A_c 求输出" }, (g) => {
     const Ad = -g.pick([20, 50, 100]);
-    const Ac = -g.pick([0.05, 0.1, 0.5]);
-    const u1 = g.pick([10, 20, 30, 50]) * 1e-3;
-    const u2 = g.pick([0, 5, 10, -10]) * 1e-3;
+    const Ac = -g.pick([0.1, 0.2, 0.5, 1]);
+    // 典型考法：两个输入都在 1 V 左右，差模只有几十毫伏，共模输出不能忽略
+    const uIc0 = g.pick([0.5, 1, 2]);
+    const uId0 = g.pick([10, 20, 40]) * 1e-3;
+    const u1 = uIc0 + uId0 / 2;
+    const u2 = uIc0 - uId0 / 2;
     const d = decompose(u1, u2);
     const uo = Ad * d.uId + Ac * d.uIc;
     return {
-      prompt: `某差分放大电路（单端输出）$A_d=${Ad}$，$A_c=${Ac}$。输入 $u_{I1}=${sig(u1 * 1e3, 3)}$ mV、$u_{I2}=${sig(u2 * 1e3, 3)}$ mV，求输出电压的变化量 $u_O$。`,
-      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: Ad * (u1 - u2), message: "还要加上共模分量产生的输出 $A_cu_{Ic}$。" }] })],
+      prompt: `某差分放大电路（单端输出）$A_d=${Ad}$，$A_c=${Ac}$。输入 $u_{I1}=${sig(u1, 4)}$ V、$u_{I2}=${sig(u2, 4)}$ V，求输出电压的变化量 $u_O$。`,
+      parts: [
+        num("uo", "$u_O$", uo, "V", "V", {
+          mistakes: [
+            { value: Ad * d.uId, tag: "diff-cm", message: `还要加上共模分量产生的输出 $A_cu_{Ic}$：这里 $u_{Ic}=${sig(d.uIc, 3)}$ V，比差模输入大得多。` },
+            { value: Ad * d.uId + Ac * (u1 + u2), tag: "diff-cm", message: "共模电压是两个输入的**平均值**：$u_{Ic}=(u_{I1}+u_{I2})/2$，不是两者之和。" },
+          ],
+        }),
+      ],
       hints: ["$u_O=A_du_{Id}+A_cu_{Ic}$。"],
       solution: `$u_{Id}=${formatSI(d.uId, "V")}$，$u_{Ic}=${formatSI(d.uIc, "V")}$，$u_O=${formatSI(uo, "V")}$。`,
     };
@@ -166,7 +176,7 @@ const sourceQ: QuestionTemplate[] = [
     return {
       prompt: `镜像电流源：$V_{CC}=${VCC}$ V，参考电阻 $R=${R(Rr)}$，两管 $\\beta=${beta}$、$U_{BE}=0.7$ V。求参考电流 $I_R$ 和输出电流 $I_{C2}$（计入基极电流）。`,
       diagram: { id: "mirror", labels: { R: R(Rr) } },
-      parts: [num("IR", "$I_R$", m.IR, "A", "mA", { mistakes: [{ value: VCC / Rr, message: "参考支路中还有 VT₁ 的 $U_{BE}$：$I_R=(V_{CC}-U_{BE})/R$。" }] }), num("IC2", "$I_{C2}$", m.IC2, "A", "mA", { tol: 0.005 })],
+      parts: [num("IR", "$I_R$", m.IR, "A", "mA", { mistakes: [{ value: VCC / Rr, tag: "forget-ube", message: "参考支路中还有 VT₁ 的 $U_{BE}$：$I_R=(V_{CC}-U_{BE})/R$。" }] }), num("IC2", "$I_{C2}$", m.IC2, "A", "mA", { tol: 0.005 })],
       hints: ["$I_R=(V_{CC}-U_{BE})/R$。", "$I_R=I_C+2I_B=I_C(1+2/\\beta)$。"],
       solution: `$I_R=${A(m.IR)}$，$I_{C2}=${A(m.IC2)}$。`,
     };
@@ -178,7 +188,7 @@ const sourceQ: QuestionTemplate[] = [
     return {
       prompt: `微电流源的参考电流 $I_R=${A(IR)}$，要求输出电流 $I_{C2}=${A(IC2)}$，$U_T=26$ mV。求 $R_{e2}$（忽略基极电流）。`,
       diagram: { id: "mirror", labels: { type: "widlar" } },
-      parts: [num("Re2", "$R_{e2}$", Re2, "Ω", "kΩ", { mistakes: [{ value: 0.026 / IC2, message: "还要乘以 $\\ln(I_R/I_{C2})$。" }] })],
+      parts: [num("Re2", "$R_{e2}$", Re2, "Ω", "kΩ", { mistakes: [{ value: 0.026 / IC2, tag: "scaling-law", message: "还要乘以 $\\ln(I_R/I_{C2})$。" }] })],
       hints: ["$I_{C2}R_{e2}=U_T\\ln(I_R/I_{C2})$。"],
       solution: `$R_{e2}=\\dfrac{U_T}{I_{C2}}\\ln\\dfrac{I_R}{I_{C2}}=${R(Re2)}$。`,
     };
@@ -191,7 +201,13 @@ const sourceQ: QuestionTemplate[] = [
     const rs = ratioSource(IR, Re1, Re2);
     return {
       prompt: `比例电流源：$I_R=${A(IR)}$，$R_{e1}=${R(Re1)}$，$R_{e2}=${R(Re2)}$。忽略基极电流和两管 $U_{BE}$ 的差别，估算 $I_{C2}$。`,
-      parts: [num("IC2", "$I_{C2}$", rs.approx, "A", "mA", { alts: [rs.IC2], tol: 0.04 })],
+      parts: [
+        num("IC2", "$I_{C2}$", rs.approx, "A", "mA", {
+          alts: [rs.IC2],
+          tol: 0.04,
+          mistakes: [{ value: (IR * Re2) / Re1, tag: "ratio-inverted", message: "两管射极电位近似相等：$I_{C2}R_{e2}\\approx I_RR_{e1}$，所以 $I_{C2}\\approx\\dfrac{R_{e1}}{R_{e2}}I_R$，电阻比别倒过来。" }],
+        }),
+      ],
       hints: ["$U_{BE1}+I_RR_{e1}\\approx U_{BE2}+I_{C2}R_{e2}$，且 $U_{BE1}\\approx U_{BE2}$。"],
       solution: `$I_{C2}\\approx I_R R_{e1}/R_{e2}=${A(rs.approx)}$（计入 $U_{BE}$ 差的精确解为 ${A(rs.IC2)}）。`,
     };
@@ -276,9 +292,9 @@ const diffQ: QuestionTemplate[] = [
       prompt: `长尾式差分放大电路：$V_{CC}=V_{EE}=${p.VCC}$ V，$R_c=${R(p.Rc)}$，$R_e=${R(p.Re)}$，$R_b=${R(p.Rb)}$，$\\beta=${p.beta}$，$U_{BE}=0.7$ V。求 $I_{EQ}$、$U_{CQ}$ 和 $U_{CEQ}$（$u_{I1}=u_{I2}=0$）。`,
       diagram: { id: "diff-longtail", labels: { Re: R(p.Re) } },
       parts: [
-        num("IE", "$I_{EQ}$", r.IEQ, "A", "mA", { alts: [(p.VEE - 0.7) / (2 * p.Re)], mistakes: [{ value: (p.VEE - 0.7) / p.Re, message: "两管的射极电流都流过 $R_e$：$2I_{EQ}R_e\\approx V_{EE}-U_{BE}$。" }] }),
+        num("IE", "$I_{EQ}$", r.IEQ, "A", "mA", { alts: [(p.VEE - 0.7) / (2 * p.Re)], mistakes: [{ value: (p.VEE - 0.7) / p.Re, tag: "half-circuit", message: "两管的射极电流都流过 $R_e$：$2I_{EQ}R_e\\approx V_{EE}-U_{BE}$。" }] }),
         num("UC", "$U_{CQ}$", r.UCQ, "V", "V", { tol: 0.02 }),
-        num("UCE", "$U_{CEQ}$", r.UCEQ, "V", "V", { tol: 0.02, mistakes: [{ value: r.UCQ, message: "发射极电位约为 −0.7 V，不是 0：$U_{CEQ}=U_{CQ}-U_{EQ}$。" }] }),
+        num("UCE", "$U_{CEQ}$", r.UCEQ, "V", "V", { tol: 0.02, mistakes: [{ value: r.UCQ, tag: "kvl-loop", message: "发射极电位约为 −0.7 V，不是 0：$U_{CEQ}=U_{CQ}-U_{EQ}$。" }] }),
       ],
       hints: ["基极回路：$I_{BQ}R_b+U_{BE}+2I_{EQ}R_e=V_{EE}$。", "$U_{EQ}\\approx-U_{BE}$（$R_b$ 上压降很小）。"],
       solution: `$I_{EQ}=${A(r.IEQ)}$，$U_{CQ}=${V(r.UCQ)}$，$U_{EQ}=${V(r.UEQ)}$，$U_{CEQ}=${V(r.UCEQ)}$。`,
@@ -291,8 +307,8 @@ const diffQ: QuestionTemplate[] = [
       prompt: `长尾式差分放大电路（双端输出）：$R_c=${R(p.Rc)}$，$R_b=${R(p.Rb)}$，$R_L=${R(p.RL)}$（接在两集电极之间），$\\beta=${p.beta}$，已求得 $r_{be}=${R(r.rbe)}$。求 $A_d$、$R_{id}$、$R_o$。`,
       diagram: { id: "diff-longtail" },
       parts: [
-        num("Ad", "$A_d$", r.Ad, "1", "−50", { signMessage: "以 $u_{I1}-u_{I2}$ 为输入、$u_{C1}-u_{C2}$ 为输出时 $A_d$ 为负。", mistakes: [{ value: (-p.beta * ((p.Rc * p.RL) / (p.Rc + p.RL))) / (p.Rb + r.rbe), message: "负载接在两集电极之间，中点为交流地，每管负载是 $R_L/2$。" }] }),
-        num("Rid", "$R_{id}$", r.Rid, "Ω", "kΩ", { mistakes: [{ value: r.Rid / 2, message: "差模输入电阻跨在两个输入端之间，包含两只管子：$2(R_b+r_{be})$。" }] }),
+        num("Ad", "$A_d$", r.Ad, "1", "−50", { signMessage: "以 $u_{I1}-u_{I2}$ 为输入、$u_{C1}-u_{C2}$ 为输出时 $A_d$ 为负。", mistakes: [{ value: (-p.beta * ((p.Rc * p.RL) / (p.Rc + p.RL))) / (p.Rb + r.rbe), tag: "half-circuit", message: "负载接在两集电极之间，中点为交流地，每管负载是 $R_L/2$。" }] }),
+        num("Rid", "$R_{id}$", r.Rid, "Ω", "kΩ", { mistakes: [{ value: r.Rid / 2, tag: "half-circuit", message: "差模输入电阻跨在两个输入端之间，包含两只管子：$2(R_b+r_{be})$。" }] }),
         num("Ro", "$R_o$", r.Ro, "Ω", "kΩ"),
       ],
       hints: ["差模时射极交流接地，每管负载 $R_c\\para R_L/2$。", "$A_d=-\\beta(R_c\\para\\frac{R_L}2)/(R_b+r_{be})$。"],
@@ -306,8 +322,8 @@ const diffQ: QuestionTemplate[] = [
       prompt: `长尾式差分放大电路从 VT₁ 集电极单端输出（空载）：$R_c=${R(p.Rc)}$，$R_e=${R(p.Re)}$，$R_b=${R(p.Rb)}$，$\\beta=${p.beta}$，$r_{be}=${R(r.rbe)}$。求 $A_d$、$A_c$ 与 $K_{CMR}$。`,
       diagram: { id: "diff-longtail", labels: { Re: R(p.Re) } },
       parts: [
-        num("Ad", "$A_d$", r.Ad, "1", "−50", { mistakes: [{ value: r.Ad * 2, message: "单端输出只取一个集电极，差模增益是双端的一半。" }] }),
-        num("Ac", "$A_c$", r.Ac, "1", "−0.5", { mistakes: [{ value: (-p.beta * p.Rc) / (p.Rb + r.rbe + (1 + p.beta) * p.Re), message: "共模时每管射极等效电阻是 $2R_e$。" }] }),
+        num("Ad", "$A_d$", r.Ad, "1", "−50", { mistakes: [{ value: r.Ad * 2, tag: "half-circuit", message: "单端输出只取一个集电极，差模增益是双端的一半。" }] }),
+        num("Ac", "$A_c$", r.Ac, "1", "−0.5", { mistakes: [{ value: (-p.beta * p.Rc) / (p.Rb + r.rbe + (1 + p.beta) * p.Re), tag: "half-circuit", message: "共模时每管射极等效电阻是 $2R_e$。" }] }),
         num("K", "$K_{CMR}$", r.KCMR, "1", "100"),
       ],
       hints: ["$A_d=-\\frac12\\beta R_c/(R_b+r_{be})$。", "$A_c=-\\beta R_c/[R_b+r_{be}+2(1+\\beta)R_e]$。"],
@@ -322,7 +338,10 @@ const diffQ: QuestionTemplate[] = [
     const uo = diffOutput(r, u1, u2);
     return {
       prompt: `上题类型电路（单端输出、空载），已求得 $A_d=${sig(r.Ad, 4)}$、$A_c=${sig(r.Ac, 4)}$，静态 $U_{CQ}=${V(r.UCQ)}$。输入 $u_{I1}=${sig(u1 * 1e3, 3)}$ mV、$u_{I2}=${sig(u2 * 1e3, 3)}$ mV，求输出电压的变化量与 VT₁ 集电极的总电位。`,
-      parts: [num("du", "$\\Delta u_O$", uo, "V", "V"), num("uc", "$u_{C1}$", r.UCQ + uo, "V", "V", { tol: 0.01 })],
+      parts: [
+        num("du", "$\\Delta u_O$", uo, "V", "V"),
+        num("uc", "$u_{C1}$", r.UCQ + uo, "V", "V", { tol: 0.01, mistakes: [{ value: uo, tag: "static-vs-dynamic", message: "集电极的总电压 = 静态值 + 变化量：$u_{C1}=U_{CQ}+\\Delta u_O$。" }] }),
+      ],
       hints: ["先分解为差模和共模。", "$\\Delta u_O=A_du_{Id}+A_cu_{Ic}$；$u_{C1}=U_{CQ}+\\Delta u_O$。"],
       solution: `$\\Delta u_O=${formatSI(uo, "V")}$，$u_{C1}=${V(r.UCQ + uo)}$。`,
     };
@@ -347,7 +366,7 @@ const diffQ: QuestionTemplate[] = [
     const x = diffLargeSignal(uid, I0);
     return {
       prompt: `理想差分对管（无射极电阻）尾电流 $I_0=${A(I0)}$，$U_T=26$ mV。差模输入电压 $u_{Id}=${sig(uid * 1e3, 3)}$ mV 时，两管集电极电流各为多少？（忽略基极电流）`,
-      parts: [num("i1", "$i_{C1}$", x.iC1, "A", "mA", { mistakes: [{ value: I0 / 2 + (I0 / 2) * (uid / 0.052), message: "大信号时不能用线性近似；电流分配按 $1/(1+e^{-u_{Id}/U_T})$。" }] }), num("i2", "$i_{C2}$", x.iC2, "A", "mA")],
+      parts: [num("i1", "$i_{C1}$", x.iC1, "A", "mA", { mistakes: [{ value: I0 / 2 + (I0 / 2) * (uid / 0.052), tag: "approx-misuse", message: "大信号时不能用线性近似；电流分配按 $1/(1+e^{-u_{Id}/U_T})$。" }] }), num("i2", "$i_{C2}$", x.iC2, "A", "mA")],
       hints: ["$i_{C1}/i_{C2}=e^{u_{Id}/U_T}$，且 $i_{C1}+i_{C2}=I_0$。"],
       solution: `$i_{C1}=${A(x.iC1)}$，$i_{C2}=${A(x.iC2)}$。`,
     };

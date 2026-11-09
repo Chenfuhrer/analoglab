@@ -7,6 +7,7 @@
 import type { DerivStep } from "@/components/math/Derivation";
 import type { Dim } from "@/simulations/units";
 import { rng } from "./generators";
+import type { MisconceptionId } from "./misconceptions";
 import type { DiagramRef, Level, MistakePattern, NumericPart, Question, QuestionTemplate } from "./types";
 
 export type Rng = ReturnType<typeof rng>;
@@ -19,7 +20,17 @@ interface Meta {
 }
 
 export function choice(
-  m: Meta & { prompt: string; options: string[]; answer: number; why: string[]; hints: string[]; solution?: string; diagram?: DiagramRef },
+  m: Meta & {
+    prompt: string;
+    options: string[];
+    answer: number;
+    why: string[];
+    hints: string[];
+    solution?: string;
+    diagram?: DiagramRef;
+    /** 错误选项对应的错因（与 options 对齐） */
+    tags?: (MisconceptionId | null)[];
+  },
 ): QuestionTemplate {
   const level = m.level ?? 1;
   const q: Question = {
@@ -30,14 +41,16 @@ export function choice(
     title: m.title,
     prompt: m.prompt,
     diagram: m.diagram,
-    body: { kind: "choice", options: m.options, answer: m.answer, why: m.why },
+    body: { kind: "choice", options: m.options, answer: m.answer, why: m.why, ...(m.tags ? { tags: m.tags } : {}) },
     hints: m.hints,
     solution: m.solution ?? m.why[m.answer],
   };
   return { id: m.id, level, topic: m.topic, title: m.title, fixed: q };
 }
 
-export function judge(m: Meta & { prompt: string; answer: boolean; why: string; hints: string[]; diagram?: DiagramRef }): QuestionTemplate {
+export function judge(
+  m: Meta & { prompt: string; answer: boolean; why: string; hints: string[]; diagram?: DiagramRef; wrongTag?: MisconceptionId },
+): QuestionTemplate {
   const level = m.level ?? 1;
   const q: Question = {
     key: m.id,
@@ -47,11 +60,16 @@ export function judge(m: Meta & { prompt: string; answer: boolean; why: string; 
     title: m.title,
     prompt: m.prompt,
     diagram: m.diagram,
-    body: { kind: "judge", answer: m.answer, why: m.why },
+    body: { kind: "judge", answer: m.answer, why: m.why, ...(m.wrongTag ? { wrongTag: m.wrongTag } : {}) },
     hints: m.hints,
     solution: m.why,
   };
   return { id: m.id, level, topic: m.topic, title: m.title, fixed: q };
+}
+
+/** 选择题：除正确答案外，其余选项都归为同一错因 */
+export function wrongAll(n: number, answer: number, tag: MisconceptionId): (MisconceptionId | null)[] {
+  return Array.from({ length: n }, (_, i) => (i === answer ? null : tag));
 }
 
 export function concept(m: Meta & { prompt: string; keyPoints: string[]; reference: string; hints?: string[]; diagram?: DiagramRef }): QuestionTemplate {
@@ -86,8 +104,11 @@ export function num(
 export interface GenOut {
   prompt: string;
   parts?: NumericPart[];
-  /** 生成选择题（如“判断工作区”） */
-  choice?: { options: string[]; answer: number; why: string[] };
+  /**
+   * 生成选择题（如“判断工作区”）。tags 为各选项对应的错因；
+   * 若所有错误选项都属于同一错因，可只写 wrongTag。
+   */
+  choice?: { options: string[]; answer: number; why: string[]; tags?: (MisconceptionId | null)[]; wrongTag?: MisconceptionId };
   hints: string[];
   solution: string;
   solutionSteps?: DerivStep[];
@@ -105,9 +126,12 @@ export function gen(m: Meta & { level: Level }, make: (g: Rng, seed: number) => 
     title: m.title,
     generate(seed) {
       const o = make(rng(seed * 7919 + m.id.length), seed);
-      const body: Question["body"] = o.choice
-        ? { kind: "choice", options: o.choice.options, answer: o.choice.answer, why: o.choice.why }
-        : { kind: "numeric", parts: o.parts ?? [] };
+      let body: Question["body"] = { kind: "numeric", parts: o.parts ?? [] };
+      if (o.choice) {
+        const c = o.choice;
+        const tags = c.tags ?? (c.wrongTag ? wrongAll(c.options.length, c.answer, c.wrongTag) : undefined);
+        body = { kind: "choice", options: c.options, answer: c.answer, why: c.why, ...(tags ? { tags } : {}) };
+      }
       return {
         key: `${m.id}:${seed}`,
         id: m.id,

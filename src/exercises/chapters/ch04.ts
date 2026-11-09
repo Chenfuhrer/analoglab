@@ -82,6 +82,7 @@ const structQ: QuestionTemplate[] = [
     return {
       prompt: `某场效应管的测试结果：${c[0]}。它是：`,
       choice: {
+        wrongTag: "fet-model",
         options: opts,
         answer: c[2],
         why: opts.map((o, i) => (i === c[2] ? "正确。" : ["零栅压有电流就不是增强型。", "零栅压无电流就不是耗尽型；耗尽型 MOS 栅极绝缘，可以加正栅压。", "结型管零栅压有电流，且栅源只能反偏。", "电流方向/栅压极性与 N 沟道相反才是 P 沟道。"][i])),
@@ -110,6 +111,7 @@ const structQ: QuestionTemplate[] = [
     return {
       prompt: `N 沟道增强型 MOS 管开启电压 $U_{GS(th)}=${Vt}$ V。$u_{GS}=${ugs}$ V、$u_{DS}=5$ V 时：`,
       choice: {
+        wrongTag: "device-state",
         options: ["已形成导电沟道，有漏极电流", "未形成导电沟道，$i_D\\approx0$"],
         answer: formed ? 0 : 1,
         why: [formed ? "正确：$u_{GS}>U_{GS(th)}$。" : "$u_{GS}$ 未超过开启电压。", formed ? "$u_{GS}$ 已超过开启电压。" : "正确。"],
@@ -191,6 +193,7 @@ const curvesQ: QuestionTemplate[] = [
     return {
       prompt: `N 沟道${enh ? "增强型（$U_{GS(th)}=" + fet.Vt + "$ V）" : "耗尽型（$U_{GS(off)}=" + fet.Vt + "$ V）"} MOS 管，$u_{GS}=${sig(ugs, 3)}$ V，$u_{DS}=${uds}$ V。它工作在：`,
       choice: {
+        wrongTag: "device-state",
         options: REGS.map((x) => FET_REGION_LABEL[x]),
         answer: REGS.indexOf(reg),
         why: REGS.map((x) => (x === reg ? "正确。" : x === "cutoff" ? "栅压已超过门槛电压。" : x === "ohmic" ? `需要 $u_{DS}<u_{GS}-U_T=${sig(ugs - fet.Vt, 3)}$ V。` : `需要 $u_{DS}\\ge u_{GS}-U_T=${sig(ugs - fet.Vt, 3)}$ V。`)),
@@ -208,7 +211,7 @@ const curvesQ: QuestionTemplate[] = [
       prompt: enh
         ? `增强型 NMOS：$U_{GS(th)}=${fet.Vt}$ V，$I_{DO}=${A(fet.Iref)}$。工作在恒流区，$u_{GS}=${sig(ugs, 3)}$ V 时 $i_D$ 为多少？`
         : `${fet.kind === "n-jfet" ? "N 沟道结型" : "N 沟道耗尽型 MOS"}管：$U_{GS(off)}=${fet.Vt}$ V，$I_{DSS}=${A(fet.Iref)}$。工作在恒流区，$u_{GS}=${sig(ugs, 3)}$ V 时 $i_D$ 为多少？`,
-      parts: [num("id", "$i_D$", id, "A", "mA", { mistakes: enh ? [{ value: fet.Iref * (ugs / fet.Vt - 1), message: "别忘了平方：$i_D=I_{DO}(u_{GS}/U_{GS(th)}-1)^2$。" }] : [{ value: fet.Iref * (1 - ugs / fet.Vt), message: "别忘了平方：$i_D=I_{DSS}(1-u_{GS}/U_{GS(off)})^2$。" }] })],
+      parts: [num("id", "$i_D$", id, "A", "mA", { mistakes: enh ? [{ value: fet.Iref * (ugs / fet.Vt - 1), tag: "fet-model", message: "别忘了平方：$i_D=I_{DO}(u_{GS}/U_{GS(th)}-1)^2$。" }] : [{ value: fet.Iref * (1 - ugs / fet.Vt), tag: "fet-model", message: "别忘了平方：$i_D=I_{DSS}(1-u_{GS}/U_{GS(off)})^2$。" }] })],
       hints: [enh ? "$i_D=I_{DO}\\left(\\dfrac{u_{GS}}{U_{GS(th)}}-1\\right)^2$。" : "$i_D=I_{DSS}\\left(1-\\dfrac{u_{GS}}{U_{GS(off)}}\\right)^2$。"],
       solution: `$i_D=${A(id)}$。`,
     };
@@ -233,7 +236,7 @@ const curvesQ: QuestionTemplate[] = [
     const ugs = fet.Vt * (1 + Math.sqrt(ID / fet.Iref));
     return {
       prompt: `增强型 NMOS：$U_{GS(th)}=${fet.Vt}$ V，$I_{DO}=${A(fet.Iref)}$。要求恒流区 $i_D=${A(ID)}$，求所需的 $u_{GS}$，以及保证工作在恒流区的最小 $u_{DS}$。`,
-      parts: [num("ugs", "$u_{GS}$", ugs, "V", "V"), num("uds", "$u_{DS\\min}$", ugs - fet.Vt, "V", "V", { mistakes: [{ value: ugs, message: "预夹断条件是 $u_{DS}=u_{GS}-U_{GS(th)}$，不是 $u_{GS}$。" }] })],
+      parts: [num("ugs", "$u_{GS}$", ugs, "V", "V"), num("uds", "$u_{DS\\min}$", ugs - fet.Vt, "V", "V", { mistakes: [{ value: ugs, tag: "fet-model", message: "预夹断条件是 $u_{DS}=u_{GS}-U_{GS(th)}$，不是 $u_{GS}$。" }] })],
       hints: ["由平方律反解 $u_{GS}=U_{GS(th)}(1+\\sqrt{i_D/I_{DO}})$。", "恒流区：$u_{DS}\\ge u_{GS}-U_{GS(th)}$。"],
       solution: `$u_{GS}=${V(ugs)}$，$u_{DS}\\ge${V(ugs - fet.Vt)}$。`,
     };
@@ -300,7 +303,7 @@ const ssQ: QuestionTemplate[] = [
     const gm = gmTextbook(fet, ID);
     return {
       prompt: `增强型 NMOS：$U_{GS(th)}=${fet.Vt}$ V，$I_{DO}=${A(fet.Iref)}$，静态电流 $I_{DQ}=${A(ID)}$。求跨导 $g_m$（单位 mS，填写如“1.2 mS”；mS 是 mA/V）。`,
-      parts: [num("gm", "$g_m$（填数值，单位 mS）", gm * 1e3, "1", "1.41", { mistakes: [{ value: (gm * 1e3) / 2, message: "$g_m=\\dfrac{2}{U_{GS(th)}}\\sqrt{I_{DO}I_{DQ}}$，别漏了因子 2。" }] })],
+      parts: [num("gm", "$g_m$（填数值，单位 mS）", gm * 1e3, "1", "1.41", { mistakes: [{ value: (gm * 1e3) / 2, tag: "fet-model", message: "$g_m=\\dfrac{2}{U_{GS(th)}}\\sqrt{I_{DO}I_{DQ}}$，别漏了因子 2。" }] })],
       hints: ["$g_m=\\dfrac{2}{U_{GS(th)}}\\sqrt{I_{DO}I_{DQ}}$。"],
       solution: `$g_m=${mS(gm)}$。`,
     };
@@ -312,7 +315,7 @@ const ssQ: QuestionTemplate[] = [
     const gm = gmTextbook(fet, ID);
     return {
       prompt: `${fet.kind === "n-jfet" ? "N 沟道结型" : "N 沟道耗尽型 MOS"}管：$I_{DSS}=${A(fet.Iref)}$，$U_{GS(off)}=${fet.Vt}$ V，静态 $U_{GSQ}=${sig(ugs, 3)}$ V。求 $I_{DQ}$ 与 $g_m$（$g_m$ 填数值，单位 mS）。`,
-      parts: [num("id", "$I_{DQ}$", ID, "A", "mA"), num("gm", "$g_m$（mS）", gm * 1e3, "1", "2", { mistakes: [{ value: ((2 * fet.Iref) / Math.abs(fet.Vt)) * 1e3, message: "这是 $U_{GS}=0$ 时的 $g_{m0}$；Q 点处还要乘以 $(1-U_{GSQ}/U_{GS(off)})$。" }] })],
+      parts: [num("id", "$I_{DQ}$", ID, "A", "mA"), num("gm", "$g_m$（mS）", gm * 1e3, "1", "2", { mistakes: [{ value: ((2 * fet.Iref) / Math.abs(fet.Vt)) * 1e3, tag: "fet-model", message: "这是 $U_{GS}=0$ 时的 $g_{m0}$；Q 点处还要乘以 $(1-U_{GSQ}/U_{GS(off)})$。" }] })],
       hints: ["$I_{DQ}=I_{DSS}(1-U_{GSQ}/U_{GS(off)})^2$。", "$g_m=-\\dfrac{2I_{DSS}}{U_{GS(off)}}\\left(1-\\dfrac{U_{GSQ}}{U_{GS(off)}}\\right)$。"],
       solution: `$I_{DQ}=${A(ID)}$，$g_m=${mS(gm)}$。`,
     };
@@ -403,7 +406,7 @@ const csQ: QuestionTemplate[] = [
       prompt: `自给偏压共源电路：$V_{DD}=${a.VDD}$ V，$R_g=${R(a.Rg)}$，$R_s=${R(a.Rs)}$，$R_d=${R(a.Rd)}$；${a.fet.kind === "n-jfet" ? "N 沟道结型" : "N 沟道耗尽型 MOS"}管 $I_{DSS}=${A(a.fet.Iref)}$，$U_{GS(off)}=${a.fet.Vt}$ V。求 $U_{GSQ}$、$I_{DQ}$、$U_{DSQ}$。`,
       diagram: { id: "cs-amp", labels: { bias: "self", Rg: R(a.Rg), Rs: R(a.Rs), Rd: R(a.Rd) } },
       parts: [
-        num("ugs", "$U_{GSQ}$", q.UGSQ, "V", "V", { mistakes: q.rejected !== undefined ? [{ value: q.rejected, message: "这个根比夹断电压还负，管子应截止，舍去。" }] : [] }),
+        num("ugs", "$U_{GSQ}$", q.UGSQ, "V", "V", { mistakes: q.rejected !== undefined ? [{ value: q.rejected, tag: "device-state", message: "这个根比夹断电压还负，管子应截止，舍去。" }] : [] }),
         num("id", "$I_{DQ}$", q.IDQ, "A", "mA"),
         num("uds", "$U_{DSQ}$", q.UDSQ, "V", "V"),
       ],
@@ -418,8 +421,8 @@ const csQ: QuestionTemplate[] = [
       prompt: `分压偏置共源电路：$V_{DD}=${a.VDD}$ V，$R_{g1}=${R(a.Rg1)}$（下），$R_{g2}=${R(a.Rg2)}$（上），$R_s=${R(a.Rs)}$，$R_d=${R(a.Rd)}$；增强型 NMOS $U_{GS(th)}=${a.fet.Vt}$ V，$I_{DO}=${A(a.fet.Iref)}$。求 $U_{GQ}$、$U_{GSQ}$、$I_{DQ}$。`,
       diagram: { id: "cs-amp", labels: { Rg1: R(a.Rg1), Rg2: R(a.Rg2), Rs: R(a.Rs), Rd: R(a.Rd) } },
       parts: [
-        num("ug", "$U_{GQ}$", q.UGQ, "V", "V", { mistakes: [{ value: (a.VDD * a.Rg2) / (a.Rg1 + a.Rg2), message: "栅极电位是下电阻 $R_{g1}$ 上的分压。" }] }),
-        num("ugs", "$U_{GSQ}$", q.UGSQ, "V", "V", { mistakes: q.rejected !== undefined ? [{ value: q.rejected, message: "这个根小于开启电压，管子应截止，舍去。" }] : [] }),
+        num("ug", "$U_{GQ}$", q.UGQ, "V", "V", { mistakes: [{ value: (a.VDD * a.Rg2) / (a.Rg1 + a.Rg2), tag: "divider-swap", message: "栅极电位是下电阻 $R_{g1}$ 上的分压。" }] }),
+        num("ugs", "$U_{GSQ}$", q.UGSQ, "V", "V", { mistakes: q.rejected !== undefined ? [{ value: q.rejected, tag: "device-state", message: "这个根小于开启电压，管子应截止，舍去。" }] : [] }),
         num("id", "$I_{DQ}$", q.IDQ, "A", "mA"),
       ],
       hints: ["$U_{GQ}=V_{DD}R_{g1}/(R_{g1}+R_{g2})$，$U_{GSQ}=U_{GQ}-I_{DQ}R_s$。", "与平方律联立，舍去 $U_{GS}<U_{GS(th)}$ 的根。"],
@@ -433,8 +436,8 @@ const csQ: QuestionTemplate[] = [
       prompt: `分压偏置共源电路（$R_s$ 被 $C_s$ 旁路）：$R_{g1}=${R(a.Rg1)}$，$R_{g2}=${R(a.Rg2)}$，$R_{g3}=${R(a.Rg3)}$，$R_d=${R(a.Rd)}$，$R_L=${R(a.RL)}$。已知 Q 点处 $g_m=${mS(q.gm)}$，忽略 $r_{ds}$。求 $\\dot A_u$、$R_i$、$R_o$。`,
       diagram: { id: "cs-amp", labels: { Rg1: R(a.Rg1), Rg2: R(a.Rg2), Rg3: a.Rg3 ? R(a.Rg3) : "0", Rd: R(a.Rd), RL: R(a.RL) } },
       parts: [
-        num("Au", "$\\dot A_u$", ac.Au, "1", "−5", { signMessage: "共源电路反相，$\\dot A_u$ 为负。", mistakes: [{ value: -q.gm * a.Rd, message: "负载 $R_L$ 与 $R_d$ 并联：$R_D'=R_d\\para R_L$。" }] }),
-        num("Ri", "$R_i$", ac.Ri, "Ω", "MΩ", { mistakes: [{ value: par(a.Rg1, a.Rg2), message: "$R_{g3}$ 串在栅极上，$R_i=R_{g3}+R_{g1}\\para R_{g2}$。" }] }),
+        num("Au", "$\\dot A_u$", ac.Au, "1", "−5", { signMessage: "共源电路反相，$\\dot A_u$ 为负。", mistakes: [{ value: -q.gm * a.Rd, tag: "load-ignored", message: "负载 $R_L$ 与 $R_d$ 并联：$R_D'=R_d\\para R_L$。" }] }),
+        num("Ri", "$R_i$", ac.Ri, "Ω", "MΩ", { mistakes: [{ value: par(a.Rg1, a.Rg2), tag: "io-resistance", message: "$R_{g3}$ 串在栅极上，$R_i=R_{g3}+R_{g1}\\para R_{g2}$。" }] }),
         num("Ro", "$R_o$", ac.Ro, "Ω", "kΩ"),
       ],
       hints: ["$\\dot A_u=-g_mR_D'$。", "$R_i=R_{g3}+R_{g1}\\para R_{g2}$，$R_o\\approx R_d$。"],
@@ -447,7 +450,17 @@ const csQ: QuestionTemplate[] = [
     return {
       prompt: `分压偏置共源电路：$V_{DD}=${a.VDD}$ V，$R_{g1}=${R(a.Rg1)}$，$R_{g2}=${R(a.Rg2)}$，$R_s=${R(a.Rs)}$（被旁路），$R_d=${R(a.Rd)}$，$R_L=${R(a.RL)}$；增强型 NMOS $U_{GS(th)}=${a.fet.Vt}$ V，$I_{DO}=${A(a.fet.Iref)}$。求 $I_{DQ}$、$g_m$（mS）与 $\\dot A_u$。`,
       diagram: { id: "cs-amp", labels: { Rg1: R(a.Rg1), Rg2: R(a.Rg2), Rs: R(a.Rs), Rd: R(a.Rd), RL: R(a.RL) } },
-      parts: [num("id", "$I_{DQ}$", q.IDQ, "A", "mA"), num("gm", "$g_m$（mS）", q.gm * 1e3, "1", "1.5"), num("Au", "$\\dot A_u$", ac.Au, "1", "−5", { signMessage: "共源反相。" })],
+      parts: [
+        num("id", "$I_{DQ}$", q.IDQ, "A", "mA"),
+        num("gm", "$g_m$（mS）", q.gm * 1e3, "1", "1.5", { mistakes: [{ value: (q.gm * 1e3) / 2, tag: "fet-model", message: "$g_m=\\dfrac{2}{U_{GS(th)}}\\sqrt{I_{DO}I_{DQ}}$，别漏了因子 2。" }] }),
+        num("Au", "$\\dot A_u$", ac.Au, "1", "−5", {
+          signMessage: "共源反相。",
+          mistakes: [
+            { value: -q.gm * par(a.Rd, ac.rds), tag: "load-ignored", message: "接负载后交流负载为 $R_D'=R_d\\para R_L$。" },
+            { value: (-q.gm * par(a.Rd, a.RL, ac.rds)) / (1 + q.gm * a.Rs), tag: "bypass-cap", message: "$R_s$ 被 $C_s$ 旁路，交流通路中源极接地，分母没有 $1+g_mR_s$。" },
+          ],
+        }),
+      ],
       hints: ["先求 Q 点（解二次方程、舍根、验证恒流区）。", "$g_m=\\frac{2}{U_{GS(th)}}\\sqrt{I_{DO}I_{DQ}}$，$\\dot A_u=-g_mR_D'$。"],
       solution: `$I_{DQ}=${A(q.IDQ)}$，$g_m=${mS(q.gm)}$，$\\dot A_u=${sig(ac.Au, 3)}$。`,
     };
@@ -458,7 +471,7 @@ const csQ: QuestionTemplate[] = [
     const un = analyzeCS({ ...a, bypass: false });
     return {
       prompt: `某共源电路 Q 点处 $g_m=${mS(by.q.gm)}$，$R_d=${R(a.Rd)}$，$R_L=${R(a.RL)}$，$R_s=${R(a.Rs)}$。求 $C_s$ 正常时和 $C_s$ 开路时的 $\\dot A_u$。`,
-      parts: [num("a1", "$C_s$ 正常", by.ac.Au, "1", "−5", { signMessage: "反相。" }), num("a2", "$C_s$ 开路", un.ac.Au, "1", "−2", { signMessage: "反相。", mistakes: [{ value: by.ac.Au, message: "$C_s$ 开路后 $R_s$ 进入交流通路，产生交流负反馈。" }] })],
+      parts: [num("a1", "$C_s$ 正常", by.ac.Au, "1", "−5", { signMessage: "反相。" }), num("a2", "$C_s$ 开路", un.ac.Au, "1", "−2", { signMessage: "反相。", mistakes: [{ value: by.ac.Au, tag: "bypass-cap", message: "$C_s$ 开路后 $R_s$ 进入交流通路，产生交流负反馈。" }] })],
       hints: ["$C_s$ 开路：$\\dot U_i=\\dot U_{gs}(1+g_mR_s)$，$\\dot A_u=-g_mR_D'/(1+g_mR_s)$。"],
       solution: `${sig(by.ac.Au, 3)} → ${sig(un.ac.Au, 3)}。`,
     };
@@ -523,7 +536,7 @@ const cdcgQ: QuestionTemplate[] = [
     return {
       prompt: `源极跟随器：Q 点处 $g_m=${mS(q.gm)}$，$R_s=${R(Rs)}$，${Number.isFinite(RL) ? `$R_L=${R(RL)}$` : "空载"}，$R_{g3}+R_{g1}\\para R_{g2}=${R(ac.Ri)}$。求 $\\dot A_u$、$R_o$。`,
       diagram: { id: "cd-amp", labels: { Rs: R(Rs), RL: Number.isFinite(RL) ? R(RL) : "∞" } },
-      parts: [num("Au", "$\\dot A_u$", ac.Au, "1", "0.8"), num("Ro", "$R_o$", ac.Ro, "Ω", "Ω", { mistakes: [{ value: 1 / q.gm, message: "还要与 $R_s$ 并联。" }, { value: Rs, message: "从源极看进去，受控源相当于 $1/g_m$ 的电阻，与 $R_s$ 并联。" }] })],
+      parts: [num("Au", "$\\dot A_u$", ac.Au, "1", "0.8"), num("Ro", "$R_o$", ac.Ro, "Ω", "Ω", { mistakes: [{ value: 1 / q.gm, tag: "io-resistance", message: "还要与 $R_s$ 并联。" }, { value: Rs, tag: "io-resistance", message: "从源极看进去，受控源相当于 $1/g_m$ 的电阻，与 $R_s$ 并联。" }] })],
       hints: ["$\\dot A_u=\\dfrac{g_mR_S'}{1+g_mR_S'}$，$R_S'=R_s\\para R_L$。", "$R_o=R_s\\para\\dfrac1{g_m}$。"],
       solution: `$\\dot A_u=${sig(ac.Au, 3)}$，$R_o=${R(ac.Ro)}$。`,
     };
@@ -534,7 +547,16 @@ const cdcgQ: QuestionTemplate[] = [
     return {
       prompt: `共栅放大电路：Q 点处 $g_m=${mS(q.gm)}$，$R_s=${R(a.Rs)}$，$R_d=${R(a.Rd)}$，$R_L=${R(a.RL)}$。求 $\\dot A_u$、$R_i$、$R_o$。`,
       diagram: { id: "cg-amp", labels: { Rs: R(a.Rs), Rd: R(a.Rd), RL: R(a.RL) } },
-      parts: [num("Au", "$\\dot A_u$", ac.Au, "1", "5", { signMessage: "共栅电路同相，$\\dot A_u$ 为正。" }), num("Ri", "$R_i$", ac.Ri, "Ω", "Ω"), num("Ro", "$R_o$", ac.Ro, "Ω", "kΩ")],
+      parts: [
+        num("Au", "$\\dot A_u$", ac.Au, "1", "5", { signMessage: "共栅电路同相，$\\dot A_u$ 为正。", mistakes: [{ value: q.gm * a.Rd, tag: "load-ignored", message: "接负载后交流负载为 $R_D'=R_d\\para R_L$。" }] }),
+        num("Ri", "$R_i$", ac.Ri, "Ω", "Ω", {
+          mistakes: [
+            { value: 1 / q.gm, tag: "io-resistance", message: "从源极看进去是 $1/g_m$，还要与 $R_s$ 并联：$R_i=R_s\\para\\dfrac1{g_m}$。" },
+            { value: a.Rs, tag: "io-resistance", message: "从源极看进去，受控源相当于 $1/g_m$ 的电阻，与 $R_s$ 并联。" },
+          ],
+        }),
+        num("Ro", "$R_o$", ac.Ro, "Ω", "kΩ", { mistakes: [{ value: par(a.Rd, a.RL), tag: "io-resistance", message: "求输出电阻时要断开负载：$R_o\\approx R_d$。" }] }),
+      ],
       hints: ["$\\dot A_u=g_mR_D'$。", "$R_i=R_s\\para\\dfrac1{g_m}$，$R_o\\approx R_d$。"],
       solution: `$\\dot A_u=${sig(ac.Au, 3)}$，$R_i=${R(ac.Ri)}$，$R_o=${R(ac.Ro)}$。`,
     };
@@ -574,7 +596,7 @@ const cdcgQ: QuestionTemplate[] = [
     const text = { hiZ: "需要电压放大（约 10 倍、反相），且输入端接内阻约 1 MΩ 的压电传感器", buffer: "需要把内阻约 1 MΩ 的信号源的电压不衰减地送到 2 kΩ 的负载上", hf: "前级输出电阻很小，需要同相电压放大且高频特性好" }[need];
     return {
       prompt: `${text}。最合适的 FET 组态是：`,
-      choice: { options: opts, answer: ans, why: [ans === 0 ? "正确：共源既有电压放大又有极高输入电阻。" : "共源反相放大，输出电阻约为 $R_d$。", ans === 1 ? "正确：共漏输入电阻极大、输出电阻小、增益接近 1。" : "共漏没有电压放大作用。", ans === 2 ? "正确：共栅同相放大、高频特性好，输入电阻小但前级输出电阻也小。" : "共栅输入电阻很小，会严重衰减高内阻信号源。"] },
+      choice: { wrongTag: "config-compare", options: opts, answer: ans, why: [ans === 0 ? "正确：共源既有电压放大又有极高输入电阻。" : "共源反相放大，输出电阻约为 $R_d$。", ans === 1 ? "正确：共漏输入电阻极大、输出电阻小、增益接近 1。" : "共漏没有电压放大作用。", ans === 2 ? "正确：共栅同相放大、高频特性好，输入电阻小但前级输出电阻也小。" : "共栅输入电阻很小，会严重衰减高内阻信号源。"] },
       hints: ["对照三种组态的 $A_u$、$R_i$、$R_o$。"],
       solution: `${opts[ans]}。`,
     };

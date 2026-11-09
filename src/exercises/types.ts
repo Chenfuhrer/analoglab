@@ -3,6 +3,7 @@ import type { DerivStep } from "@/components/math/Derivation";
 import type { CEParams } from "@/simulations/bjt/types";
 import type { Dim } from "@/simulations/units";
 import { CE_SECTIONS, UNITS } from "@/content/course";
+import type { MisconceptionId } from "./misconceptions";
 
 /** 通用电路图引用：由 src/components/circuit/diagrams 注册表渲染 */
 export interface DiagramRef {
@@ -20,18 +21,24 @@ export interface ChoiceBody {
   answer: number;
   /** 每个选项的解释（为什么对/为什么错） */
   why: string[];
+  /** 选中某个错误选项时对应的错因（与 options 对齐；null 表示不归类） */
+  tags?: (MisconceptionId | null)[];
 }
 
 export interface JudgeBody {
   kind: "judge";
   answer: boolean;
   why: string;
+  /** 判断错误时对应的错因 */
+  wrongTag?: MisconceptionId;
 }
 
-/** 常见错误：用错误公式反算出的数值 + 诊断信息 */
+/** 常见错误：按错误思路算出的数值 + 本题的具体说明 + 所属错因 */
 export interface MistakePattern {
   value: number;
   message: string;
+  /** 错因分类（见 misconceptions.ts） */
+  tag: MisconceptionId;
   tol?: number;
 }
 
