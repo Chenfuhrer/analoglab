@@ -6,7 +6,10 @@ import { Diagram } from "@/components/circuit/diagrams";
 import { Derivation } from "@/components/math/Derivation";
 import { Rich } from "@/components/math/Tex";
 import { Badge, Button, cx } from "@/components/ui/primitives";
+import { DiagnosisPanel, MisconceptionChip } from "@/components/exercises/DiagnosisPanel";
+import { diagnoseChoice, diagnoseJudge, diagnoseNumeric, type Diagnosis } from "@/exercises/diagnosis";
 import { formatAnswer, gradeNumeric, type PartGrade } from "@/exercises/grader";
+import { MISCONCEPTIONS, type MisconceptionId } from "@/exercises/misconceptions";
 import { LEVEL_LABEL, TOPIC_LABEL, type Question } from "@/exercises/types";
 import { useHydrated, useProgress } from "@/lib/store";
 import { useTutorContext } from "@/lib/tutor-context";
@@ -32,6 +35,8 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
   const [hintsShown, setHintsShown] = useState(0);
   const [showSolution, setShowSolution] = useState(false);
   const [conceptRevealed, setConceptRevealed] = useState(false);
+  /** 最近一次提交识别出的错因 */
+  const [diagHits, setDiagHits] = useState<MisconceptionId[]>([]);
   const hydrated = useHydrated();
   const recordAttempt = useProgress((s) => s.recordAttempt);
   const addMistake = useProgress((s) => s.addMistake);
@@ -40,12 +45,18 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
   const prev = useProgress((s) => s.attempts[q.key]);
   const setExercise = useTutorContext((s) => s.setExercise);
 
+  const tagNote = (t?: MisconceptionId | null) => (t ? `（错因：${MISCONCEPTIONS[t].short}）` : "");
   const feedbackText = (() => {
     if (!result) return undefined;
     if (q.body.kind === "numeric" && grades)
-      return q.body.parts.map((p) => `${p.label.replace(/\$/g, "")}: ${grades[p.id]?.message ?? "未作答"}`).join("；");
-    if (q.body.kind === "choice" && choice !== null) return q.body.why[choice];
-    if (q.body.kind === "judge") return q.body.why;
+      return q.body.parts
+        .map((p) => {
+          const g = grades[p.id];
+          return `${p.label.replace(/\$/g, "")}: ${g?.message ?? "未作答"}${g && !g.correct ? tagNote(g.tag) : ""}`;
+        })
+        .join("；");
+    if (q.body.kind === "choice" && choice !== null) return q.body.why[choice] + (result === "wrong" ? tagNote(q.body.tags?.[choice]) : "");
+    if (q.body.kind === "judge") return q.body.why + (result === "wrong" ? tagNote(q.body.wrongTag) : "");
     return undefined;
   })();
 
@@ -66,6 +77,7 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
   const submit = () => {
     let ok = false;
     let err: string | undefined;
+    let diag: Diagnosis | undefined;
     if (q.body.kind === "numeric") {
       const g: Record<string, PartGrade> = {};
       for (const p of q.body.parts) g[p.id] = gradeNumeric(p, inputs[p.id] ?? "");
@@ -75,22 +87,26 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
         .filter((p) => !g[p.id].correct)
         .map((p) => g[p.id].message)
         .join(" ");
+      diag = diagnoseNumeric(q.body.parts, g);
     } else if (q.body.kind === "choice") {
       if (choice === null) return;
       ok = choice === q.body.answer;
       if (!ok) err = q.body.why[choice];
+      diag = diagnoseChoice(q.body, choice);
     } else if (q.body.kind === "judge") {
       if (judge === null) return;
       ok = judge === q.body.answer;
       if (!ok) err = q.body.why;
+      diag = diagnoseJudge(q.body, judge);
     } else {
       // 概念题：自评，要点全部勾选视为完成
       ok = q.body.keyPoints.every((_, i) => checked[i]);
       setConceptRevealed(true);
     }
+    setDiagHits(ok ? [] : (diag?.hits ?? []));
     setTries((t) => t + 1);
     setResult(ok ? "correct" : "wrong");
-    recordAttempt({ key: q.key, title: q.title, level: q.level, topic: q.topic, correct: ok }, err);
+    recordAttempt({ key: q.key, title: q.title, level: q.level, topic: q.topic, correct: ok }, err, diag);
   };
 
   const canSubmit =
@@ -157,9 +173,15 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
                       )}
                     />
                     {g && (
-                      <p className={cx("mt-1 text-[12.5px]", g.correct ? "text-ok" : "text-err")} data-testid={`feedback-${p.id}`} data-code={g.code}>
+                      <p
+                        className={cx("mt-1 text-[12.5px]", g.correct ? "text-ok" : "text-err")}
+                        data-testid={`feedback-${p.id}`}
+                        data-code={g.code}
+                        data-tag={g.tag ?? ""}
+                      >
                         {g.correct ? "✓ " : "✗ "}
                         <Rich text={g.message} />
+                        {!g.correct && g.tag && <MisconceptionChip id={g.tag} />}
                       </p>
                     )}
                     {showSolution && (
@@ -204,6 +226,7 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
             {result && choice !== null && (
               <p className={cx("text-[13px]", result === "correct" ? "text-ok" : "text-err")} data-testid="choice-feedback">
                 <Rich text={q.body.why[choice]} />
+                {result === "wrong" && q.body.tags?.[choice] && <MisconceptionChip id={q.body.tags[choice]!} />}
               </p>
             )}
           </div>
@@ -229,6 +252,7 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
           <p className={cx("text-[13px]", result === "correct" ? "text-ok" : "text-err")}>
             {result === "correct" ? "判断正确。" : "判断有误。"}
             <Rich text={q.body.why} />
+            {result === "wrong" && q.body.wrongTag && <MisconceptionChip id={q.body.wrongTag} />}
           </p>
         )}
 
@@ -268,6 +292,7 @@ export function ExerciseCard({ question: q, onRegenerate, compact }: Props) {
             {result === "correct" ? "✓ 回答正确" : `✗ 还有错误（第 ${tries} 次提交）。已自动加入错题本，可以看提示后再试。`}
           </div>
         )}
+        {result === "wrong" && <DiagnosisPanel ids={diagHits} />}
 
         {/* 提示 */}
         {hintsShown > 0 && (

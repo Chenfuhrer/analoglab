@@ -46,7 +46,7 @@ const idealQ: QuestionTemplate[] = [
     const UOM = g.pick([10, 12, 13, 14]);
     return {
       prompt: `某运放开环差模增益为 ${sig(20 * lgA, 3)} dB，输出最大电压 $\\pm${UOM}$ V。开环使用时，差模输入电压在什么范围内运放才工作在线性区？（填正边界）`,
-      parts: [num("u", "$|u_+-u_-|_{\\max}$", UOM / A, "V", "µV", { mistakes: [{ value: UOM / (20 * lgA), message: "要先把 dB 换算为倍数：$A_{od}=10^{\\mathrm{dB}/20}$。" }] })],
+      parts: [num("u", "$|u_+-u_-|_{\\max}$", UOM / A, "V", "µV", { mistakes: [{ value: UOM / (20 * lgA), tag: "unit-convert", message: "要先把 dB 换算为倍数：$A_{od}=10^{\\mathrm{dB}/20}$。" }] })],
       hints: ["$A_{od}=10^{\\mathrm{dB}/20}$。", "线性区：$|u_+-u_-|<U_{OM}/A_{od}$。"],
       solution: `$A_{od}=${sig(A, 3)}$，$|u_+-u_-|<${formatSI(UOM / A, "V")}$。`,
     };
@@ -57,10 +57,17 @@ const idealQ: QuestionTemplate[] = [
     const UZ = g.pick([5, 6, 8]);
     const UREF = g.pick([0, 0, 1, 2]);
     const t = schmittThresholds(R1, R2, UZ, UREF);
+    // 两个分压系数对调后的（错误）阈值
+    const sw = schmittThresholds(R2, R1, UZ, UREF);
+    const SWAP = "同相端电压由 $U_{REF}$（经 $R_1$）和 $u_O$（经 $R_2$）叠加：$u_P=\\dfrac{R_2}{R_1+R_2}U_{REF}+\\dfrac{R_1}{R_1+R_2}u_O$，两个分压系数别对调。";
     return {
       prompt: `反相输入滞回比较器：同相端经 $R_1=${R(R1)}$ 接参考电压 $U_{REF}=${UREF}$ V，经 $R_2=${R(R2)}$ 接输出端；输出由双向稳压管限幅为 $\\pm${UZ}$ V。求上、下阈值电压与回差。`,
       diagram: UREF === 0 ? { id: "schmitt", labels: { R1: R(R1), R2: R(R2) } } : undefined,
-      parts: [num("p", "$U_{T+}$", t.UTp, "V", "V"), num("m", "$U_{T-}$", t.UTm, "V", "V"), num("w", "$\\Delta U_T$", t.width, "V", "V")],
+      parts: [
+        num("p", "$U_{T+}$", t.UTp, "V", "V", { mistakes: [{ value: sw.UTp, tag: "ratio-inverted", message: SWAP }] }),
+        num("m", "$U_{T-}$", t.UTm, "V", "V", { mistakes: [{ value: sw.UTm, tag: "ratio-inverted", message: SWAP }] }),
+        num("w", "$\\Delta U_T$", t.width, "V", "V", { mistakes: [{ value: sw.width, tag: "ratio-inverted", message: SWAP }] }),
+      ],
       hints: ["虚断：$u_+=\\dfrac{R_2U_{REF}+R_1u_O}{R_1+R_2}$。", "$u_O=\\pm U_Z$ 分别代入。"],
       solution: `$U_{T+}=${V(t.UTp)}$，$U_{T-}=${V(t.UTm)}$，$\\Delta U_T=${V(t.width)}$。`,
     };
@@ -158,7 +165,7 @@ const propQ: QuestionTemplate[] = [
     return {
       prompt: `反相比例运算电路 $R_1=${R(R1)}$，$R_f=${R(Rf)}$，运放理想，$\\pm U_{OM}=\\pm13$ V。$u_I=${ui}$ V 时求 $u_O$；并求平衡电阻 $R'$。`,
       diagram: { id: "inv-amp", labels: { R1: R(R1), Rf: R(Rf) } },
-      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: -uo, message: "反相比例：输出与输入反相。" }, { value: (1 + Rf / R1) * ui, message: "这是同相比例的公式。" }] }), num("rp", "$R'$", par(R1, Rf), "Ω", "kΩ")],
+      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: -uo, tag: "sign", message: "反相比例：输出与输入反相。" }, { value: (1 + Rf / R1) * ui, tag: "opamp-config", message: "这是同相比例的公式。" }] }), num("rp", "$R'$", par(R1, Rf), "Ω", "kΩ")],
       hints: ["$u_O=-\\frac{R_f}{R_1}u_I$（注意饱和）。", "$R'=R_1\\para R_f$。"],
       solution: `$u_O=${V(uo)}$${Math.abs(r.ideal * ui) > 13 ? "（已饱和）" : ""}，$R'=${R(par(R1, Rf))}$。`,
     };
@@ -172,7 +179,7 @@ const propQ: QuestionTemplate[] = [
     return {
       prompt: `同相比例运算电路 $R_1=${R(R1)}$（反相端对地），$R_f=${R(Rf)}$，运放理想，$\\pm U_{OM}=\\pm13$ V。$u_I=${ui}$ V 时求 $u_O$。`,
       diagram: { id: "noninv-amp", labels: { R1: R(R1), Rf: R(Rf) } },
-      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: (Rf / R1) * ui, message: "同相比例的系数是 $1+R_f/R_1$。" }, { value: -(Rf / R1) * ui, message: "这是反相比例的公式。" }] })],
+      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: (Rf / R1) * ui, tag: "opamp-config", message: "同相比例的系数是 $1+R_f/R_1$。" }, { value: -(Rf / R1) * ui, tag: "opamp-config", message: "这是反相比例的公式。" }] })],
       hints: ["$u_O=(1+\\frac{R_f}{R_1})u_I$。"],
       solution: `$u_O=${V(uo)}$${Math.abs(r.ideal * ui) > 13 ? "（已饱和）" : ""}。`,
     };
@@ -183,7 +190,7 @@ const propQ: QuestionTemplate[] = [
     const Rf = k < 0 ? -k * R1 : (k - 1) * R1;
     return {
       prompt: `要求 $u_O=${k}u_I$，且${k < 0 ? `输入电阻为 ${R(R1)}` : `取 $R_1=${R(R1)}$`}。应采用${k < 0 ? "反相" : "同相"}比例电路，求反馈电阻 $R_f$。`,
-      parts: [num("rf", "$R_f$", Rf, "Ω", "kΩ", { mistakes: k > 0 ? [{ value: k * R1, message: "同相比例系数为 $1+R_f/R_1$，所以 $R_f=(k-1)R_1$。" }] : [] })],
+      parts: [num("rf", "$R_f$", Rf, "Ω", "kΩ", { mistakes: k > 0 ? [{ value: k * R1, tag: "opamp-config", message: "同相比例系数为 $1+R_f/R_1$，所以 $R_f=(k-1)R_1$。" }] : [] })],
       hints: [k < 0 ? "反相比例：$R_i=R_1$，$R_f=|k|R_1$。" : "同相比例：$1+R_f/R_1=k$。"],
       solution: `$R_f=${R(Rf)}$。`,
     };
@@ -208,7 +215,15 @@ const propQ: QuestionTemplate[] = [
     const uo = clipOut(k2 * uo1, 13);
     return {
       prompt: `第一级为反相比例电路（$R_f/R_1=${-k1}$），第二级为同相比例电路（$1+R_f/R_1=${k2}$），运放理想，$\\pm U_{OM}=\\pm13$ V。输入 $u_I=${ui}$ V，求 $u_{O1}$ 和 $u_O$。`,
-      parts: [num("u1", "$u_{O1}$", uo1, "V", "V"), num("uo", "$u_O$", uo, "V", "V")],
+      parts: [
+        num("u1", "$u_{O1}$", uo1, "V", "V"),
+        num("uo", "$u_O$", uo, "V", "V", {
+          mistakes:
+            Math.abs(k2 * uo1) > 13
+              ? [{ value: k2 * uo1, tag: "device-state", message: `运放输出不可能超过 $\\pm U_{OM}=\\pm13$ V：第二级已经饱和，$u_O=${uo > 0 ? "" : "-"}13$ V。` }]
+              : [],
+        }),
+      ],
       hints: ["运放输出电阻为 0，后级不影响前级：直接相乘。"],
       solution: `$u_{O1}=${V(uo1)}$，$u_O=${V(uo)}$。`,
     };
@@ -264,7 +279,7 @@ const arithQ: QuestionTemplate[] = [
     return {
       prompt: `反相求和电路 $R_f=${R(Rf)}$，$R_1=${R(Rs[0])}$、$R_2=${R(Rs[1])}$、$R_3=${R(Rs[2])}$，输入 $u_{I1}=${u[0]}$ V、$u_{I2}=${u[1]}$ V、$u_{I3}=${u[2]}$ V。求 $u_O$（运放理想）。`,
       diagram: { id: "summer", labels: { R1: R(Rs[0]), R2: R(Rs[1]), R3: R(Rs[2]), Rf: R(Rf) } },
-      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: -uo, message: "反相求和，输出前有负号。" }] })],
+      parts: [num("uo", "$u_O$", uo, "V", "V", { mistakes: [{ value: -uo, tag: "sign", message: "反相求和，输出前有负号。" }] })],
       hints: ["$u_O=-R_f\\sum u_{Ik}/R_k$。"],
       solution: `$u_O=${V(uo)}$。`,
     };
@@ -281,7 +296,7 @@ const arithQ: QuestionTemplate[] = [
     return {
       prompt: `减法电路 $R_1=R_2=${R(R1)}$，$R_f=R_3=${R(Rf)}$（$u_{I1}$ 接反相端、$u_{I2}$ 接同相端），运放理想。$u_{I1}=${u1}$ V、$u_{I2}=${u2}$ V 时求 $u_O$。`,
       diagram: { id: "subtractor", labels: { R1: R(R1), R2: R(R2), R3: R(R3), Rf: R(Rf) } },
-      parts: [num("uo", "$u_O$", s.uO, "V", "V", { mistakes: [{ value: -s.uO, message: "$u_O=\\frac{R_f}{R_1}(u_{I2}-u_{I1})$：同相端的输入取正号。" }] })],
+      parts: [num("uo", "$u_O$", s.uO, "V", "V", { mistakes: [{ value: -s.uO, tag: "sign", message: "$u_O=\\frac{R_f}{R_1}(u_{I2}-u_{I1})$：同相端的输入取正号。" }] })],
       hints: ["用叠加原理，或直接用匹配条件下的结论。"],
       solution: `$u_O=${k}\\times(${u2}-${u1})=${V(s.uO)}$。`,
     };
@@ -326,7 +341,14 @@ const arithQ: QuestionTemplate[] = [
     return {
       prompt: `电路同减法电路，但电阻不匹配：$R_1=${R(R1)}$、$R_f=${R(Rf)}$、$R_2=${R(R2)}$、$R_3=${R(R3)}$，$u_{I1}=${u1}$ V（反相端）、$u_{I2}=${u2}$ V（同相端）。用叠加原理求 $u_O$。`,
       diagram: { id: "subtractor", labels: { R1: R(R1), R2: R(R2), R3: R(R3), Rf: R(Rf) } },
-      parts: [num("uo", "$u_O$", s.uO, "V", "V")],
+      parts: [
+        num("uo", "$u_O$", s.uO, "V", "V", {
+          mistakes: [
+            { value: (Rf / R1) * (u2 - u1), tag: "approx-misuse", message: "电阻不匹配时不能套用 $u_O=\\frac{R_f}{R_1}(u_{I2}-u_{I1})$：要按叠加原理分别算两路输入。" },
+            { value: (1 + Rf / R1) * u2 - (Rf / R1) * u1, tag: "kvl-loop", message: "同相端电位是 $u_{I2}$ 经 $R_2$、$R_3$ 分压后的值：$u_P=\\frac{R_3}{R_2+R_3}u_{I2}$，不是 $u_{I2}$ 本身。" },
+          ],
+        }),
+      ],
       hints: ["$u_{I1}$ 单独作用：$-\\frac{R_f}{R_1}u_{I1}$。", "$u_{I2}$ 单独作用：$(1+\\frac{R_f}{R_1})\\frac{R_3}{R_2+R_3}u_{I2}$。"],
       solution: `$u_O=${V(s.uO)}$。`,
     };
@@ -384,7 +406,7 @@ const intQ: QuestionTemplate[] = [
     return {
       prompt: `积分电路 $R=${R(Rr)}$，$C=${formatSI(C, "F")}$，运放理想，$\\pm U_{OM}=\\pm12$ V，电容初始电压为零。$t=0$ 时加入 $U_I=${UI}$ V 的恒定电压，求 $t=${formatSI(t, "s")}$ 时的 $u_O$。`,
       diagram: { id: "integrator", labels: { R: R(Rr), C: formatSI(C, "F") } },
-      parts: [num("uo", "$u_O$", uo, "V", "V", { tol: 0.02, mistakes: [{ value: -uo, message: "反相积分：$u_O=-\\frac{U_I}{RC}t$。" }] })],
+      parts: [num("uo", "$u_O$", uo, "V", "V", { tol: 0.02, mistakes: [{ value: -uo, tag: "sign", message: "反相积分：$u_O=-\\frac{U_I}{RC}t$。" }] })],
       hints: ["$u_O=-\\dfrac{U_I}{RC}t$，注意是否超过 $\\pm U_{OM}$。"],
       solution: `$u_O=-\\dfrac{${UI}\\times${formatSI(t, "s")}}{${formatSI(Rr * C, "s")}}${Math.abs((UI * t) / (Rr * C)) > 12 ? "\\to" : "="}${V(uo)}$${Math.abs((UI * t) / (Rr * C)) > 12 ? "（已饱和）" : ""}。`,
     };
@@ -398,7 +420,7 @@ const intQ: QuestionTemplate[] = [
     const pp = Math.max(...w.uo) - Math.min(...w.uo);
     return {
       prompt: `积分电路 $R=${R(Rr)}$，$C=${formatSI(C, "F")}$，输入为幅值 ±${A} V、频率 ${f} Hz 的对称方波（输出不饱和，直流分量为零）。求输出三角波的峰峰值。`,
-      parts: [num("pp", "$U_{opp}$", pp, "V", "V", { tol: 0.02, mistakes: [{ value: pp / 2, message: "这是峰值；峰峰值是半个周期内输出的总变化量 $A\\cdot\\frac{T}{2}/(RC)$。" }] })],
+      parts: [num("pp", "$U_{opp}$", pp, "V", "V", { tol: 0.02, mistakes: [{ value: pp / 2, tag: "rms-peak-avg", message: "这是峰值；峰峰值是半个周期内输出的总变化量 $A\\cdot\\frac{T}{2}/(RC)$。" }] })],
       hints: ["半个周期内输入恒定为 $\\pm A$，输出变化 $A\\cdot\\frac{T/2}{RC}$。"],
       solution: `峰峰值 $=\\dfrac{${A}\\times${formatSI(1 / (2 * f), "s")}}{${formatSI(Rr * C, "s")}}=${V(pp)}$。`,
     };
@@ -428,7 +450,7 @@ const intQ: QuestionTemplate[] = [
     const amp = Math.max(...w.uo);
     return {
       prompt: `积分电路 $R=${R(Rr)}$、$C=${formatSI(C, "F")}$，输入 $u_I=${A}\\sin(2\\pi\\cdot${f}t)$ V（不饱和、输出无直流分量）。求输出电压的幅值，以及它相对输入的相位差（度，超前为正）。`,
-      parts: [num("a", "幅值", amp, "V", "V", { tol: 0.02 }), num("ph", "相位差（°）", 90, "1", "90", { tol: 0.01, mistakes: [{ value: -90, message: "反相积分：$-\\int\\sin=\\cos$，余弦超前正弦 90°。" }] })],
+      parts: [num("a", "幅值", amp, "V", "V", { tol: 0.02 }), num("ph", "相位差（°）", 90, "1", "90", { tol: 0.01, mistakes: [{ value: -90, tag: "waveform", message: "反相积分：$-\\int\\sin=\\cos$，余弦超前正弦 90°。" }] })],
       hints: ["$-\\dfrac{1}{RC}\\int A\\sin\\omega t\\,\\mathrm dt=\\dfrac{A}{\\omega RC}\\cos\\omega t$。"],
       solution: `幅值 $A/(\\omega RC)=${V(amp)}$，输出超前 90°。`,
     };

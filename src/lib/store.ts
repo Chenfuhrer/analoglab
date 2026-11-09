@@ -3,6 +3,8 @@
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { applyDiagnosis, type Diagnosis, type MisconceptionStats } from "@/exercises/diagnosis";
+import type { MisconceptionId } from "@/exercises/misconceptions";
 
 export interface AttemptRecord {
   /** 题目实例键 "<questionId>" 或 "<generatorId>:<seed>" */
@@ -25,6 +27,8 @@ export interface MistakeEntry {
   /** auto：答错自动收录；manual：手动收藏 */
   source: "auto" | "manual";
   lastError?: string;
+  /** 最近一次答错时识别出的错因 */
+  lastTags?: MisconceptionId[];
 }
 
 export interface ActivityEntry {
@@ -39,8 +43,10 @@ interface ProgressState {
   attempts: Record<string, AttemptRecord>;
   mistakes: Record<string, MistakeEntry>;
   activity: ActivityEntry[];
+  /** 错因统计（错因画像） */
+  misconceptions: MisconceptionStats;
   setSectionDone: (key: string, done: boolean) => void;
-  recordAttempt: (a: Omit<AttemptRecord, "tries" | "lastAt" | "firstCorrectOnTry">, error?: string) => void;
+  recordAttempt: (a: Omit<AttemptRecord, "tries" | "lastAt" | "firstCorrectOnTry">, error?: string, diag?: Diagnosis) => void;
   addMistake: (m: Omit<MistakeEntry, "addedAt">) => void;
   removeMistake: (key: string) => void;
   resetAll: () => void;
@@ -55,6 +61,7 @@ export const useProgress = create<ProgressState>()(
       attempts: {},
       mistakes: {},
       activity: [],
+      misconceptions: {},
       setSectionDone: (key, done) =>
         set((s) => {
           const sectionsDone = { ...s.sectionsDone };
@@ -65,8 +72,9 @@ export const useProgress = create<ProgressState>()(
             : s.activity;
           return { sectionsDone, activity };
         }),
-      recordAttempt: (a, error) =>
+      recordAttempt: (a, error, diag) =>
         set((s) => {
+          const now = Date.now();
           const prev = s.attempts[a.key];
           const tries = (prev?.tries ?? 0) + 1;
           const rec: AttemptRecord = {
@@ -74,8 +82,9 @@ export const useProgress = create<ProgressState>()(
             tries,
             correct: a.correct || Boolean(prev?.correct),
             firstCorrectOnTry: prev?.firstCorrectOnTry ?? (a.correct ? tries : undefined),
-            lastAt: Date.now(),
+            lastAt: now,
           };
+          const lastTags = diag?.hits.length ? diag.hits : undefined;
           const mistakes = { ...s.mistakes };
           if (!a.correct && !mistakes[a.key]) {
             mistakes[a.key] = {
@@ -83,16 +92,18 @@ export const useProgress = create<ProgressState>()(
               title: a.title,
               level: a.level,
               topic: a.topic,
-              addedAt: Date.now(),
+              addedAt: now,
               source: "auto",
               lastError: error,
+              lastTags,
             };
           } else if (!a.correct && mistakes[a.key]) {
-            mistakes[a.key] = { ...mistakes[a.key], lastError: error };
+            mistakes[a.key] = { ...mistakes[a.key], lastError: error, lastTags };
           }
           return {
             attempts: { ...s.attempts, [a.key]: rec },
             mistakes,
+            misconceptions: diag ? applyDiagnosis(s.misconceptions ?? {}, diag, a.key, now) : s.misconceptions,
             activity: [{ t: Date.now(), kind: "exercise" as const, id: a.key, ok: a.correct }, ...s.activity].slice(
               0,
               MAX_ACTIVITY,
@@ -107,7 +118,7 @@ export const useProgress = create<ProgressState>()(
           delete mistakes[key];
           return { mistakes };
         }),
-      resetAll: () => set({ sectionsDone: {}, attempts: {}, mistakes: {}, activity: [] }),
+      resetAll: () => set({ sectionsDone: {}, attempts: {}, mistakes: {}, activity: [], misconceptions: {} }),
     }),
     {
       name: "analoglab-progress-v1",

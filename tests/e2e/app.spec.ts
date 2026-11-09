@@ -160,6 +160,55 @@ test.describe("练习与进度", () => {
     await expect(c2).toHaveAttribute("data-result", "correct");
   });
 
+  test("错因诊断 → 同类错因练习 → 错因画像与错题本", async ({ page }) => {
+    await page.goto("/practice");
+    await page.getByTestId("q-gen-fixed-q").click();
+    const card = page.getByTestId("exercise");
+    await expect(card).toHaveAttribute("data-key", "gen-fixed-q:1");
+    // 先提交一次，读出参考答案
+    await card.getByTestId("answer-IBQ").fill("1 uA");
+    await card.getByTestId("submit").click();
+    await card.getByTestId("show-solution").click();
+    const ref = (await card.locator("p", { hasText: "参考答案" }).first().textContent())!.replace("参考答案：", "").split("（")[0].trim();
+    // 单位前缀写错（数值相同、数量级差 1000 倍）
+    const wrong = ref.includes("µA") ? ref.replace("µA", "mA") : ref.replace("mA", "A");
+    await card.getByTestId("answer-IBQ").fill(wrong);
+    await card.getByTestId("submit").click();
+    await expect(card.getByTestId("feedback-IBQ")).toHaveAttribute("data-tag", "unit-convert");
+    const diag = card.getByTestId("diagnosis");
+    await expect(diag.getByTestId("diag-unit-convert")).toBeVisible();
+    await expect(diag.locator(".katex-error")).toHaveCount(0);
+
+    await diag.getByTestId("diag-practice").click();
+    await expect(page).toHaveURL(/\/practice\?mc=unit-convert/);
+    await expect(page.getByTestId("mc-filter")).toHaveAttribute("data-tag", "unit-convert");
+    await expect(page.getByTestId("exercise")).toBeVisible();
+
+    await page.goto("/progress");
+    const row = page.getByTestId("mc-row-unit-convert");
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-resolved", "0");
+
+    await page.goto("/mistakes");
+    await expect(page.getByTestId("mistake-item").first().getByTestId("diag-chip")).toHaveAttribute("data-tag", "unit-convert");
+  });
+
+  test("选择题的错误选项给出错因", async ({ page }) => {
+    await page.goto("/practice?topic=fb-judge");
+    await page.getByTestId("q-fj-g-oa").click();
+    const card = page.getByTestId("exercise");
+    // 找一个错误选项：先选第一个，若恰好正确再换第二个
+    await card.getByTestId("option-0").click();
+    await card.getByTestId("submit").click();
+    if ((await card.getAttribute("data-result")) === "correct") {
+      await card.getByTestId("option-1").click();
+      await card.getByTestId("submit").click();
+    }
+    await expect(card).toHaveAttribute("data-result", "wrong");
+    await expect(card.getByTestId("diag-chip")).toHaveAttribute("data-tag", "feedback-type");
+    await expect(card.getByTestId("diagnosis").getByTestId("diag-feedback-type")).toBeVisible();
+  });
+
   test("选择题判题与解释", async ({ page }) => {
     await page.goto("/practice");
     await page.getByTestId("q-c-cutoff-shape").click();

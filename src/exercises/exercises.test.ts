@@ -14,7 +14,7 @@ const part: NumericPart = {
   expected: 2.02e-3,
   dim: "A",
   unitHint: "mA",
-  mistakes: [{ value: 2.5e-3, message: "MISTAKE" }],
+  mistakes: [{ value: 2.5e-3, message: "MISTAKE", tag: "forget-ube" }],
 };
 
 describe("判题器", () => {

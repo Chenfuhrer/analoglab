@@ -49,7 +49,7 @@ const conceptQ: QuestionTemplate[] = [
     const c = closedLoop(A, F);
     return {
       prompt: `某负反馈放大电路开环放大倍数 $A=${sig(A, 3)}$，反馈系数 $F=${F}$。求反馈深度 $1+AF$ 与闭环放大倍数 $A_f$。`,
-      parts: [num("d", "$1+AF$", c.depth, "1", "101"), num("af", "$A_f$", c.Af, "1", "99", { mistakes: [{ value: 1 / F, message: "这是深度负反馈的近似值 $1/F$；本题要求精确值 $A/(1+AF)$。" }, { value: A / (1 - A * F), message: "负反馈的分母是 $1+AF$。" }] })],
+      parts: [num("d", "$1+AF$", c.depth, "1", "101"), num("af", "$A_f$", c.Af, "1", "99", { mistakes: [{ value: 1 / F, tag: "approx-misuse", message: "这是深度负反馈的近似值 $1/F$；本题要求精确值 $A/(1+AF)$。" }, ...(A * F === 1 ? [] : [{ value: A / (1 - A * F), tag: "feedback-sign" as const, message: "负反馈的分母是 $1+AF$。" }])] })],
       hints: ["$A_f=\\dfrac{A}{1+AF}$。"],
       solution: `$1+AF=${sig(c.depth, 4)}$，$A_f=${sig(c.Af, 4)}$（$1/F=${sig(1 / F, 4)}$）。`,
     };
@@ -81,7 +81,7 @@ const conceptQ: QuestionTemplate[] = [
     const Af = closedLoop(A, -F).Af;
     return {
       prompt: `基本放大电路 $A=${A}$，引入**正**反馈，反馈系数 $|F|=${F}$（$AF$ 取为 $-${sig(A * F, 3)}$）。求闭环增益。若 $|F|$ 增大到 ${1 / A}，会发生什么？（只求前者）`,
-      parts: [num("af", "$A_f$", Af, "1", "20", { mistakes: [{ value: A / (1 + A * F), message: "正反馈时 $1+AF<1$，这里 $AF=-${sig(A * F, 3)}$。" }] })],
+      parts: [num("af", "$A_f$", Af, "1", "20", { mistakes: [{ value: A / (1 + A * F), tag: "feedback-sign", message: `正反馈时 $1+AF<1$，这里 $AF=-${sig(A * F, 3)}$。` }] })],
       hints: ["正反馈：$|1+AF|<1$，$A_f>A$。"],
       solution: `$A_f=${A}/(1-${sig(A * F, 3)})=${sig(Af, 4)}$；当 $AF=-1$ 时 $A_f\\to\\infty$，电路自激。`,
     };
@@ -148,6 +148,7 @@ const judgeQ: QuestionTemplate[] = [
       prompt: "判断图示电路中反馈的组态（均为负反馈）：",
       diagram: { id },
       choice: {
+        wrongTag: "feedback-type",
         options: TOPOS.map((x) => TOPOLOGY_LABEL[x]),
         answer: TOPOS.indexOf(t),
         why: TOPOS.map((x) => (x === t ? "正确。" : x.startsWith("voltage") !== t.startsWith("voltage") ? "输出端判断错：令 $u_O=0$ 看反馈是否消失。" : "输入端判断错：看反馈与输入是否接在同一节点。")),
@@ -161,7 +162,7 @@ const judgeQ: QuestionTemplate[] = [
     const opts = ["稳定输出电压，输入电阻增大", "稳定输出电压，输入电阻减小", "稳定输出电流，输入电阻增大", "稳定输出电流，输入电阻减小"];
     return {
       prompt: `${TOPOLOGY_LABEL[t]}的作用是：`,
-      choice: { options: opts, answer: TOPOS.indexOf(t), why: opts.map((_, i) => (i === TOPOS.indexOf(t) ? "正确。" : "电压反馈稳定输出电压、电流反馈稳定输出电流；串联反馈增大输入电阻、并联反馈减小输入电阻。")) },
+      choice: { wrongTag: "feedback-effect", options: opts, answer: TOPOS.indexOf(t), why: opts.map((_, i) => (i === TOPOS.indexOf(t) ? "正确。" : "电压反馈稳定输出电压、电流反馈稳定输出电流；串联反馈增大输入电阻、并联反馈减小输入电阻。")) },
       hints: ["输出端的取样方式决定稳定什么；输入端的比较方式决定输入电阻。"],
       solution: opts[TOPOS.indexOf(t)] + "。",
     };
@@ -173,6 +174,7 @@ const judgeQ: QuestionTemplate[] = [
         prompt: "图示共射电路中，跨接在集电极与基极之间的电阻 $R_f$ 引入的是：",
         diagram: { id: "fb-cb" },
         choice: {
+          wrongTag: "feedback-type",
           options: TOPOS.map((x) => TOPOLOGY_LABEL[x]),
           answer: 1,
           why: ["输入端：反馈与输入都接基极，是并联。", "正确：输出短路（集电极交流接地）后反馈消失；反馈与输入都接基极。", "输出端：令 $u_o=0$ 后 $R_f$ 下端接地，反馈消失，是电压反馈。", "是电压反馈。"],
@@ -185,6 +187,7 @@ const judgeQ: QuestionTemplate[] = [
       prompt: "分压偏置共射电路中，射极电阻 $R_{e1}$ 未被旁路。它对交流信号引入的是：",
       figure: { params: { ...DEFAULT_DIVIDER, Re1: 300, Re2: 900 }, mode: "full" },
       choice: {
+        wrongTag: "feedback-type",
         options: TOPOS.map((x) => TOPOLOGY_LABEL[x]),
         answer: 2,
         why: ["输出端：令 $u_o=0$（集电极交流接地）后 $i_e$ 仍流过 $R_{e1}$，反馈存在，是电流反馈。", "—", "正确：反馈电压 $i_eR_{e1}$ 与输入电压分别作用于基极与射极（串联），取样于输出电流。", "输入加在基极、反馈加在射极，是串联。"],
@@ -203,7 +206,7 @@ const judgeQ: QuestionTemplate[] = [
     const [text, pos, why] = g.pick(cases);
     return {
       prompt: `${text}。该反馈是：`,
-      choice: { options: ["正反馈", "负反馈"], answer: pos ? 0 : 1, why: pos ? ["正确：" + why, "按瞬时极性逐级推：" + why] : ["按瞬时极性逐级推：" + why, "正确：" + why] },
+      choice: { wrongTag: "feedback-sign", options: ["正反馈", "负反馈"], answer: pos ? 0 : 1, why: pos ? ["正确：" + why, "按瞬时极性逐级推：" + why] : ["按瞬时极性逐级推：" + why, "正确：" + why] },
       hints: ["设输入 ⊕，沿信号传输方向逐级标极性。", "共射反相、共集同相；运放从同相端到输出同相、从反相端到输出反相。"],
       solution: pos ? "正反馈。" : "负反馈。",
     };
@@ -219,7 +222,7 @@ const judgeQ: QuestionTemplate[] = [
     const opts = ["只有直流反馈", "只有交流反馈", "交、直流反馈都有"];
     return {
       prompt: `${text}。该支路引入：`,
-      choice: { options: opts, answer: ans, why: opts.map((_, i) => (i === ans ? "正确：" + why : why)) },
+      choice: { wrongTag: "bypass-cap", options: opts, answer: ans, why: opts.map((_, i) => (i === ans ? "正确：" + why : why)) },
       hints: ["分别画直流通路（电容开路）和交流通路（大电容短路）。"],
       solution: opts[ans] + "。",
     };
@@ -274,7 +277,7 @@ const effectsQ: QuestionTemplate[] = [
     const s = gainSensitivity(A, F, d);
     return {
       prompt: `负反馈放大电路 $A=${sig(A, 3)}$、$F=${F}$。若由于温度变化 $A$ 变化了 ${d > 0 ? "+" : ""}${d * 100}%，闭环增益变化了多少（百分数，精确计算）？`,
-      parts: [num("r", "$\\Delta A_f/A_f$", s.rel, "1", "0.2%", { tol: 0.03, mistakes: [{ value: d, message: "闭环增益的变化被缩小为原来的 $1/(1+AF)$。" }] })],
+      parts: [num("r", "$\\Delta A_f/A_f$", s.rel, "1", "0.2%", { tol: 0.03, mistakes: [{ value: d, tag: "feedback-effect", message: "闭环增益的变化被缩小为原来的 $1/(1+AF)$。" }] })],
       hints: ["分别算出变化前后的 $A_f$。", "近似：$\\frac{\\mathrm dA_f}{A_f}=\\frac{1}{1+AF}\\cdot\\frac{\\mathrm dA}{A}$。"],
       solution: `$A_f$ 从 ${sig(s.before, 5)} 变为 ${sig(s.after, 5)}，变化 ${sig(s.rel * 100, 3)}%。`,
     };
@@ -286,7 +289,15 @@ const effectsQ: QuestionTemplate[] = [
     const b = bandwidthWithFeedback(Am, fH, F);
     return {
       prompt: `单极点放大电路中频增益 $A_m=${sig(Am, 3)}$，上限截止频率 $f_H=${formatSI(fH, "Hz")}$。引入 $F=${F}$ 的负反馈后，求中频增益与上限截止频率。`,
-      parts: [num("a", "$A_{mf}$", b.Amf, "1", "99"), num("f", "$f_{Hf}$", b.fHf, "Hz", "kHz")],
+      parts: [
+        num("a", "$A_{mf}$", b.Amf, "1", "99", { mistakes: [{ value: 1 / F, tag: "approx-misuse", message: "这是深度负反馈的近似值 $1/F$；本题要求 $A_{mf}=A_m/(1+A_mF)$。" }] }),
+        num("f", "$f_{Hf}$", b.fHf, "Hz", "kHz", {
+          mistakes: [
+            { value: fH / (1 + Am * F), tag: "feedback-effect", message: "负反馈使带宽**展宽**：$f_{Hf}=(1+A_mF)f_H$，不是除以 $(1+A_mF)$。" },
+            { value: fH, tag: "feedback-effect", message: "增益–带宽积近似不变：增益降为原来的 $1/(1+A_mF)$，$f_H$ 相应升高 $(1+A_mF)$ 倍。" },
+          ],
+        }),
+      ],
       hints: ["$A_{mf}=\\frac{A_m}{1+A_mF}$，$f_{Hf}=(1+A_mF)f_H$。"],
       solution: `$A_{mf}=${sig(b.Amf, 4)}$，$f_{Hf}=${formatSI(b.fHf, "Hz")}$。`,
     };
@@ -299,7 +310,14 @@ const effectsQ: QuestionTemplate[] = [
     const r = feedbackResistances(t, Ri, Ro, depth);
     return {
       prompt: `基本放大电路 $R_i=${R(Ri)}$、$R_o=${R(Ro)}$，引入${TOPOLOGY_LABEL[t]}，反馈深度为 ${depth}（输出电阻计算时取同一深度）。求 $R_{if}$ 与 $R_{of}$。`,
-      parts: [num("ri", "$R_{if}$", r.Rif, "Ω", "kΩ"), num("ro", "$R_{of}$", r.Rof, "Ω", "Ω")],
+      parts: [
+        num("ri", "$R_{if}$", r.Rif, "Ω", "kΩ", {
+          mistakes: [{ value: t.endsWith("series") ? Ri / depth : Ri * depth, tag: "feedback-effect", message: "串联负反馈使输入电阻增大 $(1+AF)$ 倍，并联负反馈使它减小 $(1+AF)$ 倍——方向别弄反。" }],
+        }),
+        num("ro", "$R_{of}$", r.Rof, "Ω", "Ω", {
+          mistakes: [{ value: t.startsWith("voltage") ? Ro * depth : Ro / depth, tag: "feedback-effect", message: "电压负反馈使输出电阻减小 $(1+AF)$ 倍，电流负反馈使它增大——方向别弄反。" }],
+        }),
+      ],
       hints: ["串联 ×(1+AF)，并联 ÷(1+AF)；电压反馈 $R_o$ ÷(1+AF)，电流反馈 ×(1+AF)。"],
       solution: `$R_{if}=${R(r.Rif)}$，$R_{of}=${R(r.Rof)}$。`,
     };
@@ -314,7 +332,7 @@ const effectsQ: QuestionTemplate[] = [
     const [text, ans] = g.pick(cases);
     return {
       prompt: `${text}。应引入哪种负反馈？`,
-      choice: { options: TOPOS.map((x) => TOPOLOGY_LABEL[x]), answer: ans, why: TOPOS.map((x, i) => (i === ans ? "正确。" : "电压源信号用串联、电流源信号用并联；稳电压用电压反馈、稳电流用电流反馈。")) },
+      choice: { wrongTag: "feedback-effect", options: TOPOS.map((x) => TOPOLOGY_LABEL[x]), answer: ans, why: TOPOS.map((x, i) => (i === ans ? "正确。" : "电压源信号用串联、电流源信号用并联；稳电压用电压反馈、稳电流用电流反馈。")) },
       hints: ["输入端看信号源类型，输出端看要稳定的量。"],
       solution: TOPOLOGY_LABEL[TOPOS[ans]] + "。",
     };
@@ -327,7 +345,7 @@ const effectsQ: QuestionTemplate[] = [
     const fLf = lowCornerWithFeedback(Am, fL, F);
     return {
       prompt: `放大电路中频增益 ${Am}，下限截止频率 ${fL} Hz（单极点高通）。引入反馈系数 ${F} 的负反馈后，下限截止频率变为多少？`,
-      parts: [num("f", "$f_{Lf}$", fLf, "Hz", "Hz", { mistakes: [{ value: fL * d, message: "负反馈使下限频率**降低**：$f_{Lf}=f_L/(1+A_mF)$。" }] })],
+      parts: [num("f", "$f_{Lf}$", fLf, "Hz", "Hz", { mistakes: [{ value: fL * d, tag: "feedback-effect", message: "负反馈使下限频率**降低**：$f_{Lf}=f_L/(1+A_mF)$。" }] })],
       hints: ["低频段同样有增益下降被反馈补偿的效果。"],
       solution: `$f_{Lf}=${fL}/${sig(d, 3)}=${formatSI(fLf, "Hz")}$。`,
     };
@@ -382,7 +400,15 @@ const deepQ: QuestionTemplate[] = [
     return {
       prompt: `运放构成的电压串联负反馈电路（同相比例），$R_1=${R(R1)}$、$R_f=${R(Rf)}$。求反馈系数 $F_{uu}$ 与深度负反馈下的 $A_{uf}$。`,
       diagram: { id: "noninv-amp", labels: { R1: R(R1), Rf: R(Rf) } },
-      parts: [num("F", "$F_{uu}$", 1 / r.ideal, "1", "0.1"), num("A", "$A_{uf}$", r.ideal, "1", "10")],
+      parts: [
+        num("F", "$F_{uu}$", 1 / r.ideal, "1", "0.1", { mistakes: [{ value: Rf / (R1 + Rf), tag: "ratio-inverted", message: "反馈电压取自 $R_1$ 上的分压：$F_{uu}=\\dfrac{R_1}{R_1+R_f}$。" }] }),
+        num("A", "$A_{uf}$", r.ideal, "1", "10", {
+          mistakes: [
+            { value: Rf / R1, tag: "opamp-config", message: "同相比例：$A_{uf}\\approx1/F_{uu}=1+R_f/R_1$，别漏了“1+”。" },
+            { value: -Rf / R1, tag: "opamp-config", message: "这是反相比例的结果；电压串联负反馈对应同相比例，$A_{uf}=1+R_f/R_1$。" },
+          ],
+        }),
+      ],
       hints: ["$F_{uu}=u_F/u_O=R_1/(R_1+R_f)$。", "$A_{uf}\\approx1/F_{uu}$。"],
       solution: `$F_{uu}=${sig(1 / r.ideal, 4)}$，$A_{uf}=${sig(r.ideal, 4)}$。`,
     };
@@ -406,7 +432,12 @@ const deepQ: QuestionTemplate[] = [
     return {
       prompt: `图示集电极–基极反馈电路，$R_s=${R(Rs)}$、$R_f=${R(Rf)}$，满足深度负反馈条件。估算源电压放大倍数 $\\dot A_{usf}=\\dot U_o/\\dot U_s$。`,
       diagram: { id: "fb-cb", labels: { Rs: R(Rs), Rf: R(Rf) } },
-      parts: [num("a", "$\\dot A_{usf}$", est, "1", "−10", { signMessage: "输入加在基极、从集电极输出，反相。" })],
+      parts: [
+        num("a", "$\\dot A_{usf}$", est, "1", "−10", {
+          signMessage: "输入加在基极、从集电极输出，反相。",
+          mistakes: [{ value: -(1 + Rf / Rs), tag: "opamp-config", message: "电压并联负反馈的估算式是 $\\dot A_{usf}\\approx-R_f/R_s$，没有“1+”（那是同相比例的形式）。" }],
+        }),
+      ],
       hints: ["净输入电流 $i_B\\approx0$，基极交流电位约为 0（虚地）。", "$\\frac{u_s}{R_s}\\approx\\frac{0-u_o}{R_f}$。"],
       solution: `$\\dot A_{usf}\\approx-R_f/R_s=${sig(est, 4)}$。`,
     };
@@ -418,7 +449,7 @@ const deepQ: QuestionTemplate[] = [
     return {
       prompt: `图示电流串联负反馈电路（运放理想）中，$R=${R(Rr)}$，负载 $R_L=${R(RL)}$。输入 $u_I=${ui}$ V，求负载电流 $i_O$；若 $R_L$ 换成 ${R(RL * 2)}（运放不饱和），$i_O$ 变为多少？`,
       diagram: { id: "fb-cs-oa", labels: { R: R(Rr), RL: R(RL) } },
-      parts: [num("i1", "$i_O$", currentSeriesOutput(ui, Rr), "A", "mA"), num("i2", "换负载后 $i_O$", currentSeriesOutput(ui, Rr), "A", "mA", { mistakes: [{ value: currentSeriesOutput(ui, Rr) / 2, message: "电流反馈稳定输出电流：$i_O=u_I/R$ 与 $R_L$ 无关。" }] })],
+      parts: [num("i1", "$i_O$", currentSeriesOutput(ui, Rr), "A", "mA"), num("i2", "换负载后 $i_O$", currentSeriesOutput(ui, Rr), "A", "mA", { mistakes: [{ value: currentSeriesOutput(ui, Rr) / 2, tag: "feedback-effect", message: "电流反馈稳定输出电流：$i_O=u_I/R$ 与 $R_L$ 无关。" }] })],
       hints: ["虚短：反相端电压 = $u_I$；虚断：$R_L$ 中的电流全部流过 $R$。"],
       solution: `$i_O=u_I/R=${formatSI(currentSeriesOutput(ui, Rr), "A")}$，与负载无关。`,
     };

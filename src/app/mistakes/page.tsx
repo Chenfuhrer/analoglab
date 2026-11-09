@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Workspace } from "@/components/layout/Workspace";
 import { PageContext } from "@/components/layout/PageContext";
 import { ExerciseCard } from "@/components/exercises/ExerciseCard";
+import { MisconceptionChip } from "@/components/exercises/DiagnosisPanel";
+import { isMisconceptionId } from "@/exercises/misconceptions";
 import { questionFromKey } from "@/exercises/bank";
 import { LEVEL_LABEL, TOPIC_LABEL } from "@/exercises/types";
 import { useHydrated, useProgress } from "@/lib/store";
@@ -79,6 +81,7 @@ export default function MistakesPage() {
               {m.lastError && open !== m.key && (
                 <div className="border-t border-line-2 px-4 py-2 text-[12.5px] text-err">
                   上次错误原因：<Rich text={m.lastError} />
+                  {m.lastTags?.filter(isMisconceptionId).map((t) => <MisconceptionChip key={t} id={t} />)}
                 </div>
               )}
               {open === m.key && q && (

@@ -63,7 +63,7 @@ const couplingQ: QuestionTemplate[] = [
     const fL = cornerFrequency(Ro1 + Ri2, C);
     return {
       prompt: `两级阻容耦合放大电路中，第一级输出电阻 $R_{o1}=${R(Ro1)}$，第二级输入电阻 $R_{i2}=${R(Ri2)}$，级间耦合电容 $C=${formatSI(C, "F")}$。只考虑该电容，求下限截止频率 $f_L$。`,
-      parts: [num("fL", "$f_L$", fL, "Hz", "Hz", { mistakes: [{ value: cornerFrequency(Ri2, C), message: "电容两端看进去的电阻是 $R_{o1}+R_{i2}$（串联），不能漏掉前级输出电阻。" }, { value: 1 / ((Ro1 + Ri2) * C), message: "这是角频率 ω；$f=\\omega/(2\\pi)$。" }] })],
+      parts: [num("fL", "$f_L$", fL, "Hz", "Hz", { mistakes: [{ value: cornerFrequency(Ri2, C), tag: "io-resistance", message: "电容两端看进去的电阻是 $R_{o1}+R_{i2}$（串联），不能漏掉前级输出电阻。" }, { value: 1 / ((Ro1 + Ri2) * C), tag: "omega-f", message: "这是角频率 ω；$f=\\omega/(2\\pi)$。" }] })],
       hints: ["$f_L=\\dfrac{1}{2\\pi C(R_{o1}+R_{i2})}$。"],
       solution: `$f_L=${formatSI(fL, "Hz")}$。`,
     };
@@ -86,7 +86,7 @@ const couplingQ: QuestionTemplate[] = [
     return {
       prompt: `直接耦合两级共射电路：$V_{CC}=12$ V，第一级 $R_{b1}=560$ kΩ（接 $V_{CC}$）、$R_{c1}=3$ kΩ；第二级 $R_{e2}=${R(Re2)}$；两管 $\\beta=100$、$U_{BE}=0.7$ V。第一级集电极直接接第二级基极。求第一级集电极电位 $U_{C1}$（计入第二级基极电流）。`,
       diagram: { id: "direct-2ce", labels: { Rb1: "560 kΩ", Rc1: "3 kΩ", Rc2: R(o.Rc2), Re2: R(Re2) } },
-      parts: [num("uc1", "$U_{C1}$", d.UC1, "V", "V", { mistakes: [{ value: 12 - 100 * (11.3 / 560e3) * 3e3, message: "第二级基极电流也流过 $R_{c1}$：$U_{C1}=V_{CC}-(I_{C1}+I_{B2})R_{c1}$。" }] })],
+      parts: [num("uc1", "$U_{C1}$", d.UC1, "V", "V", { mistakes: [{ value: 12 - 100 * (11.3 / 560e3) * 3e3, tag: "kcl-split", message: "第二级基极电流也流过 $R_{c1}$：$U_{C1}=V_{CC}-(I_{C1}+I_{B2})R_{c1}$。" }] })],
       hints: ["$I_{C1}=\\beta(V_{CC}-U_{BE})/R_{b1}$。", "$I_{B2}=(U_{C1}-U_{BE})/[(1+\\beta)R_{e2}]$，与 $U_{C1}=V_{CC}-(I_{C1}+I_{B2})R_{c1}$ 联立。"],
       solution: `$U_{C1}=${V(d.UC1)}$，$I_{B2}=${A(d.IB2)}$。`,
     };
@@ -115,7 +115,7 @@ const couplingQ: QuestionTemplate[] = [
     const droop = highPassDroop(tau, 1 / (2 * f));
     return {
       prompt: `频率 ${f} Hz 的方波经耦合电容（$C=${formatSI(C, "F")}$，电容两端看进去的总电阻 ${R(Rsum)}）传到下一级。半个周期内方波顶部下降了多少（相对于跳变后的初值，百分数）？`,
-      parts: [num("d", "相对下降量", droop, "1", "5%", { tol: 0.03, mistakes: [{ value: 1 / (2 * f) / tau, message: "这是线性近似 $t/\\tau$；本题要求用指数 $1-e^{-t/\\tau}$ 精确计算（近似只在 $t\\ll\\tau$ 时成立）。" }] })],
+      parts: [num("d", "相对下降量", droop, "1", "5%", { tol: 0.03, mistakes: [{ value: 1 / (2 * f) / tau, tag: "approx-misuse", message: "这是线性近似 $t/\\tau$；本题要求用指数 $1-e^{-t/\\tau}$ 精确计算（近似只在 $t\\ll\\tau$ 时成立）。" }] })],
       hints: ["时间常数 $\\tau=RC$。", "高通网络在半个周期内按 $e^{-t/\\tau}$ 衰减，$t=T/2$。"],
       solution: `$\\tau=${formatSI(tau, "s")}$，下降 $1-e^{-T/(2\\tau)}=${sig(droop * 100, 3)}\\%$。`,
     };
@@ -172,7 +172,7 @@ const analysisQ: QuestionTemplate[] = [
     return {
       prompt: `两级放大电路，第一级：$A_{uo1}=${s1.Auo}$、$R_{i1}=${R(s1.Ri)}$、$R_{o1}=${R(s1.Ro)}$；第二级：$A_{uo2}=${s2.Auo}$、$R_{i2}=${R(s2.Ri)}$、$R_{o2}=${R(s2.Ro)}$（$A_{uo}$ 为空载增益）。负载 $R_L=${R(RL)}$。求两级的带载增益 $A_{u1}$、$A_{u2}$ 与总增益 $A_u$。`,
       diagram: { id: "block-cascade" },
-      parts: [num("a1", "$A_{u1}$", c.stageGains[0], "1", "−30", { mistakes: [{ value: s1.Auo, message: "第一级接了第二级的输入电阻 $R_{i2}$，要按 $R_{o1}$ 与 $R_{i2}$ 分压。" }] }), num("a2", "$A_{u2}$", c.stageGains[1], "1", "−40"), num("au", "$A_u$", c.Au, "1", "1200", { mistakes: [{ value: c.naive, message: "不能把空载增益直接相乘。" }] })],
+      parts: [num("a1", "$A_{u1}$", c.stageGains[0], "1", "−30", { mistakes: [{ value: s1.Auo, tag: "load-ignored", message: "第一级接了第二级的输入电阻 $R_{i2}$，要按 $R_{o1}$ 与 $R_{i2}$ 分压。" }] }), num("a2", "$A_{u2}$", c.stageGains[1], "1", "−40"), num("au", "$A_u$", c.Au, "1", "1200", { mistakes: [{ value: c.naive, tag: "load-ignored", message: "不能把空载增益直接相乘。" }] })],
       hints: ["$A_{u1}=A_{uo1}\\dfrac{R_{i2}}{R_{o1}+R_{i2}}$，$A_{u2}=A_{uo2}\\dfrac{R_L}{R_{o2}+R_L}$。"],
       solution: `$A_{u1}=${sig(c.stageGains[0], 3)}$，$A_{u2}=${sig(c.stageGains[1], 3)}$，$A_u=${sig(c.Au, 4)}$（空载增益直接相乘会得到 ${sig(c.naive, 4)}）。`,
     };
@@ -188,7 +188,7 @@ const analysisQ: QuestionTemplate[] = [
       prompt: `两级阻容耦合共射电路（射极电阻均被旁路）。第一级：$R_c=${R(p1.Rc)}$，$r_{be1}=${R(a1.ac.rbe)}$，$\\beta_1=${p1.beta}$，$R_{b1}\\para R_{b2}=${R(a1.dc.RB)}$；第二级：$R_c=${R(p2.Rc)}$，$r_{be2}=${R(a2.ac.rbe)}$，$\\beta_2=${p2.beta}$，$R_{b1}'\\para R_{b2}'=${R(a2.dc.RB)}$；$R_L=${R(RL)}$。求 $R_{i2}$、$\\dot A_{u1}$、$\\dot A_{u2}$、$\\dot A_u$。`,
       parts: [
         num("ri2", "$R_{i2}$", t.Ri2, "Ω", "kΩ"),
-        num("a1", "$\\dot A_{u1}$", t.A1, "1", "−40", { signMessage: "共射反相。", mistakes: [{ value: t.A1open, message: "第一级的负载是 $R_{c1}\\para R_{i2}$，不能按空载算。" }] }),
+        num("a1", "$\\dot A_{u1}$", t.A1, "1", "−40", { signMessage: "共射反相。", mistakes: [{ value: t.A1open, tag: "load-ignored", message: "第一级的负载是 $R_{c1}\\para R_{i2}$，不能按空载算。" }] }),
         num("a2", "$\\dot A_{u2}$", t.A2, "1", "−80", { signMessage: "共射反相。" }),
         num("au", "$\\dot A_u$", t.Au, "1", "3000", { signMessage: "两级共射，总增益为正。" }),
       ],
@@ -202,7 +202,7 @@ const analysisQ: QuestionTemplate[] = [
     const t = analyzeCECE(p1, p2, 5e3);
     return {
       prompt: `上一题类型的两级共射电路：第一级 $R_{b1}\\para R_{b2}=${R(analyzeCE(p1).dc.RB)}$、$r_{be1}=${R(analyzeCE(p1).ac.rbe)}$；第二级 $R_{c2}=${R(p2.Rc)}$。求整个电路的输入电阻与输出电阻。`,
-      parts: [num("ri", "$R_i$", t.Ri, "Ω", "kΩ"), num("ro", "$R_o$", t.Ro, "Ω", "kΩ", { mistakes: [{ value: p1.Rc, message: "输出电阻看的是最后一级：$R_o\\approx R_{c2}$。" }] })],
+      parts: [num("ri", "$R_i$", t.Ri, "Ω", "kΩ"), num("ro", "$R_o$", t.Ro, "Ω", "kΩ", { mistakes: [{ value: p1.Rc, tag: "io-resistance", message: "输出电阻看的是最后一级：$R_o\\approx R_{c2}$。" }] })],
       hints: ["$R_i=R_{i1}$，$R_o=R_{o2}$。"],
       solution: `$R_i=${R(t.Ri)}$，$R_o=${R(t.Ro)}$。`,
     };
@@ -218,10 +218,10 @@ const analysisQ: QuestionTemplate[] = [
       diagram: { id: "cecc-amp", labels: { Rc1: R(p1.Rc), Rb3: R(cc.Rb2), Rb4: R(cc.Rb1), Re2: R(cc.Re), RL: R(RL) } },
       parts: [
         num("ri2", "$R_{i2}$", t.Ri2, "Ω", "kΩ", { tol: 0.04 }),
-        num("a1", "$\\dot A_{u1}$", t.A1, "1", "−80", { tol: 0.04, signMessage: "共射反相。" }),
-        num("a2", "$\\dot A_{u2}$", t.A2, "1", "0.95", { tol: 0.01 }),
-        num("au", "$\\dot A_u$", t.Au, "1", "−75", { tol: 0.04 }),
-        num("ro", "$R_o$", t.Ro, "Ω", "Ω", { tol: 0.06 }),
+        num("a1", "$\\dot A_{u1}$", t.A1, "1", "−80", { tol: 0.04, signMessage: "共射反相。", mistakes: [{ value: t.A1open, tag: "load-ignored", message: "第一级的负载是第二级的输入电阻：$R_{L1}'=R_{c1}\\para R_{i2}$，不能按空载算。" }] }),
+        num("a2", "$\\dot A_{u2}$", t.A2, "1", "0.95", { tol: 0.01, mistakes: [{ value: 1, tag: "approx-misuse", message: "$\\dot A_{u2}$ 略小于 1，本题要求按射极跟随器公式计算。" }] }),
+        num("au", "$\\dot A_u$", t.Au, "1", "−75", { tol: 0.04, mistakes: [{ value: t.A1open * t.A2, tag: "load-ignored", message: "不能用第一级的空载增益相乘：第一级要带上第二级的输入电阻 $R_{i2}$。" }] }),
+        num("ro", "$R_o$", t.Ro, "Ω", "Ω", { tol: 0.06, mistakes: [{ value: p1.Rc, tag: "io-resistance", message: "输出电阻看的是最后一级（射极跟随器）：$R_o=R_{e2}\\para\\dfrac{r_{be2}+R_{c1}\\para R_B}{1+\\beta_2}$。" }] }),
       ],
       hints: ["先求第二级的 Q 点和 $r_{be2}$。", "$R_{i2}=R_{b3}\\para R_{b4}\\para[r_{be2}+(1+\\beta_2)(R_{e2}\\para R_L)]$。", "$R_o=R_{e2}\\para\\dfrac{r_{be2}+R_{c1}\\para R_{b3}\\para R_{b4}}{1+\\beta_2}$。"],
       solution: `$R_{i2}=${R(t.Ri2)}$，$\\dot A_{u1}=${sig(t.A1, 3)}$，$\\dot A_{u2}=${sig(t.A2, 4)}$，$\\dot A_u=${sig(t.Au, 3)}$，$R_o=${R(t.Ro)}$。`,
@@ -288,7 +288,7 @@ const driftQ: QuestionTemplate[] = [
     const dOut = g.pick([0.1, 0.2, 0.5, 1, 2]);
     return {
       prompt: `某直接耦合放大电路电压放大倍数为 ${Au}，输入端短路时，温度升高 10 °C 后输出电压漂移了 ${dOut} V。折合到输入端的温漂是多少（每摄氏度）？`,
-      parts: [num("d", "温漂", dOut / Au / 10, "V", "µV", { mistakes: [{ value: dOut / Au, message: "还要除以温度变化量 10 °C，得到每摄氏度的漂移。" }] })],
+      parts: [num("d", "温漂", dOut / Au / 10, "V", "µV", { mistakes: [{ value: dOut / Au, tag: "unit-convert", message: "还要除以温度变化量 10 °C，得到每摄氏度的漂移。" }] })],
       hints: ["折合到输入端 = 输出漂移 / 总增益。", "再除以温度变化量。"],
       solution: `${formatSI(dOut / Au / 10, "V")}/°C。`,
     };

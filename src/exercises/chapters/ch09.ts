@@ -51,7 +51,7 @@ const basicsQ: QuestionTemplate[] = [
     return {
       prompt: `RC ${kind === "lp" ? "低通" : "高通"}电路 $R=${R(Rr)}$、$C=${F(C)}$。求${kind === "lp" ? "上限" : "下限"}截止频率。`,
       diagram: { id: kind === "lp" ? "rc-lowpass" : "rc-highpass", labels: { R: R(Rr), C: F(C) } },
-      parts: [num("f", "$f_c$", fc, "Hz", "Hz", { mistakes: [{ value: 1 / (Rr * C), message: "这是角频率 $\\omega$；$f=1/(2\\pi RC)$。" }] })],
+      parts: [num("f", "$f_c$", fc, "Hz", "Hz", { mistakes: [{ value: 1 / (Rr * C), tag: "omega-f", message: "这是角频率 $\\omega$；$f=1/(2\\pi RC)$。" }] })],
       hints: ["$f_c=\\dfrac1{2\\pi RC}$。"],
       solution: `$f_c=${Hz(fc)}$。`,
     };
@@ -64,7 +64,7 @@ const basicsQ: QuestionTemplate[] = [
     const h = kind === "lp" ? lowPass(f, fc) : highPass(f, fc);
     return {
       prompt: `一阶 RC ${kind === "lp" ? "低通" : "高通"}电路截止频率 $f_c=${Hz(fc)}$。在 $f=${Hz(f)}$ 时，求 $20\\lg|\\dot A_u|$（dB）和相移（°）。`,
-      parts: [num("db", "增益（dB）", 20 * Math.log10(cabs(h)), "1", "−3", { tol: 0.03 }), num("ph", "相移（°）", cargDeg(h), "1", "−45", { tol: 0.02 })],
+      parts: [num("db", "增益（dB）", 20 * Math.log10(cabs(h)), "1", "−3", { tol: 0.03, mistakes: [{ value: 10 * Math.log10(cabs(h)), tag: "unit-convert", message: "电压增益的分贝数是 $20\\lg|\\dot A_u|$，不是 $10\\lg$。" }] }), num("ph", "相移（°）", cargDeg(h), "1", "−45", { tol: 0.02 })],
       hints: [kind === "lp" ? "$|\\dot A_u|=1/\\sqrt{1+(f/f_c)^2}$，$\\varphi=-\\arctan(f/f_c)$。" : "$|\\dot A_u|=\\dfrac{f/f_c}{\\sqrt{1+(f/f_c)^2}}$，$\\varphi=90°-\\arctan(f/f_c)$。"],
       solution: `${sig(20 * Math.log10(cabs(h)), 3)} dB，${sig(cargDeg(h), 3)}°。`,
     };
@@ -77,7 +77,7 @@ const basicsQ: QuestionTemplate[] = [
     const e = bandEdges(resp, Math.sqrt(fL * fH));
     return {
       prompt: `某放大电路 $\\dot A_u=\\dfrac{${Am}}{(1-j\\,${fL}/f)(1+j\\,f/${sig(fH, 3)})}$（f 单位 Hz）。求中频增益（dB）、$f_L$、$f_H$ 与通频带。`,
-      parts: [num("db", "中频增益（dB）", 20 * Math.log10(Am), "1", "40", { tol: 0.01 }), num("fl", "$f_L$", e.fL, "Hz", "Hz", { tol: 0.02 }), num("fh", "$f_H$", e.fH, "Hz", "kHz", { tol: 0.02 }), num("bw", "$f_{bw}$", e.fH - e.fL, "Hz", "kHz", { tol: 0.02 })],
+      parts: [num("db", "中频增益（dB）", 20 * Math.log10(Am), "1", "40", { tol: 0.01, mistakes: [{ value: 10 * Math.log10(Am), tag: "unit-convert", message: "电压增益的分贝数是 $20\\lg|\\dot A_u|$，不是 $10\\lg$（$10\\lg$ 用于功率）。" }] }), num("fl", "$f_L$", e.fL, "Hz", "Hz", { tol: 0.02 }), num("fh", "$f_H$", e.fH, "Hz", "kHz", { tol: 0.02 }), num("bw", "$f_{bw}$", e.fH - e.fL, "Hz", "kHz", { tol: 0.02 })],
       hints: ["分母两个因子分别对应下限、上限截止频率。"],
       solution: `中频 ${sig(20 * Math.log10(Am), 3)} dB，$f_L\\approx${Hz(e.fL)}$，$f_H\\approx${Hz(e.fH)}$。`,
     };
@@ -156,7 +156,7 @@ const hpiQ: QuestionTemplate[] = [
     const h = hybridPi({ IEQ, beta, rbb: 200, fT, Cmu });
     return {
       prompt: `晶体管 $I_{EQ}=${formatSI(IEQ, "A")}$，$\\beta_0=${beta}$，$f_T=${Hz(fT)}$，$C_\\mu=${F(Cmu)}$，$U_T=26$ mV。求 $g_m$（mS）、$r_{b'e}$ 和 $C_\\pi$。`,
-      parts: [num("gm", "$g_m$（mS）", h.gm * 1e3, "1", "38"), num("r", "$r_{b'e}$", h.rbpe, "Ω", "kΩ"), num("c", "$C_\\pi$", h.Cpi, "F", "pF", { tol: 0.04, mistakes: [{ value: h.gm / (2 * Math.PI * fT), message: "还要减去 $C_\\mu$：$C_\\pi\\approx\\frac{g_m}{2\\pi f_T}-C_\\mu$。" }] })],
+      parts: [num("gm", "$g_m$（mS）", h.gm * 1e3, "1", "38"), num("r", "$r_{b'e}$", h.rbpe, "Ω", "kΩ"), num("c", "$C_\\pi$", h.Cpi, "F", "pF", { tol: 0.04, mistakes: [{ value: h.gm / (2 * Math.PI * fT), tag: "freq-model", message: "还要减去 $C_\\mu$：$C_\\pi\\approx\\frac{g_m}{2\\pi f_T}-C_\\mu$。" }] })],
       hints: ["$g_m=I_{EQ}/U_T$，$r_{b'e}=(1+\\beta_0)U_T/I_{EQ}$。", "$C_\\pi\\approx g_m/(2\\pi f_T)-C_\\mu$。"],
       solution: `$g_m=${sig(h.gm * 1e3, 3)}$ mS，$r_{b'e}=${R(h.rbpe)}$，$C_\\pi=${F(h.Cpi)}$。`,
     };
@@ -271,7 +271,7 @@ const singleQ: QuestionTemplate[] = [
     const CM = millerCap(gm, RLp, Cmu);
     return {
       prompt: `共射电路 $g_m=${sig(gm * 1e3, 3)}$ mS，$R_L'=${R(RLp)}$，$C_\\mu=${F(Cmu)}$，$C_\\pi=${F(Cpi)}$。求米勒等效电容 $(1+g_mR_L')C_\\mu$ 与 $C_\\pi'$。`,
-      parts: [num("m", "$C_M$", CM, "F", "pF", { mistakes: [{ value: gm * RLp * Cmu, message: "因子是 $1+g_mR_L'$（=$1-\\dot K$）。" }] }), num("t", "$C_\\pi'$", Cpi + CM, "F", "pF")],
+      parts: [num("m", "$C_M$", CM, "F", "pF", { mistakes: [{ value: Cmu, tag: "freq-model", message: "跨接在 b′–c 间的 $C_\\mu$ 等效到输入端要放大 $(1+g_mR_L')$ 倍（密勒效应），不能直接用 $C_\\mu$。" }] }), num("t", "$C_\\pi'$", Cpi + CM, "F", "pF", { mistakes: [{ value: Cpi + Cmu, tag: "freq-model", message: "并到 $C_\\pi$ 上的是密勒等效电容 $(1+g_mR_L')C_\\mu$，不是 $C_\\mu$ 本身。" }] })],
       hints: ["$C_\\pi'=C_\\pi+(1+g_mR_L')C_\\mu$。"],
       solution: `$C_M=${F(CM)}$，$C_\\pi'=${F(Cpi + CM)}$。`,
     };
@@ -281,7 +281,7 @@ const singleQ: QuestionTemplate[] = [
     const r = ceFrequency(p, { fT: g.pick([150, 200, 300]) * 1e6, Cmu: g.pick([2, 3, 4]) * 1e-12 });
     return {
       prompt: `共射电路高频等效：$C_\\pi'=${F(r.CpiMiller)}$，从 $C_\\pi'$ 两端看进去的电阻 $R=r_{b'e}\\para(r_{bb'}+R_s\\para R_B)=${R(r.Rpi)}$。求上限截止频率 $f_H$。`,
-      parts: [num("f", "$f_H$", r.fH, "Hz", "kHz", { mistakes: [{ value: 1 / (r.Rpi * r.CpiMiller), message: "$f_H=1/(2\\pi RC_\\pi')$，别漏 2π。" }] })],
+      parts: [num("f", "$f_H$", r.fH, "Hz", "kHz", { mistakes: [{ value: 1 / (r.Rpi * r.CpiMiller), tag: "omega-f", message: "$f_H=1/(2\\pi RC_\\pi')$，别漏 2π。" }] })],
       hints: ["$f_H=\\dfrac1{2\\pi RC_\\pi'}$。"],
       solution: `$f_H=${Hz(r.fH)}$。`,
     };
@@ -291,7 +291,10 @@ const singleQ: QuestionTemplate[] = [
     const r = ceFrequency(p, { fT: 200e6, Cmu: 3e-12 });
     return {
       prompt: `共射电路三个电容各自的转折频率为：$f_{C1}=${Hz(r.hp.fC1)}$、$f_{C2}=${Hz(r.hp.fC2)}$、$f_{Ce}=${Hz(r.hp.fCe)}$。用短路时间常数法估算下限截止频率，并指出起主要作用的电容（$C_1$ 填 1，$C_2$ 填 2，$C_e$ 填 3）。`,
-      parts: [num("fl", "$f_L$", r.fL, "Hz", "Hz", { tol: 0.02 }), num("k", "主导电容", [r.hp.fC1, r.hp.fC2, r.hp.fCe].indexOf(Math.max(r.hp.fC1, r.hp.fC2, r.hp.fCe)) + 1, "1", "3", { tol: 0.01 })],
+      parts: [num("fl", "$f_L$", r.fL, "Hz", "Hz", {
+          tol: 0.02,
+          mistakes: [{ value: Math.max(r.hp.fC1, r.hp.fC2, r.hp.fCe), tag: "approx-misuse", message: "只取最大的转折频率是“主导电容”近似；短路时间常数法要把各转折频率相加：$f_L\\approx f_{C1}+f_{C2}+f_{Ce}$。" }],
+        }), num("k", "主导电容", [r.hp.fC1, r.hp.fC2, r.hp.fCe].indexOf(Math.max(r.hp.fC1, r.hp.fC2, r.hp.fCe)) + 1, "1", "3", { tol: 0.01 })],
       hints: ["$f_L\\approx\\sum f_{Ck}$。"],
       solution: `$f_L\\approx${Hz(r.fL)}$。`,
     };
@@ -368,7 +371,7 @@ const multiQ: QuestionTemplate[] = [
     const ex = identicalStages(n, 10, fH);
     return {
       prompt: `${n} 级完全相同的放大电路级联，单级上限截止频率 ${Hz(fH)}（单极点）。求总的上限截止频率。`,
-      parts: [num("f", "$f_H$", ex.fH, "Hz", "kHz", { tol: 0.02, mistakes: [{ value: fH / n, message: "不是简单除以 n：$f_H=f_{H1}\\sqrt{2^{1/n}-1}$。" }] })],
+      parts: [num("f", "$f_H$", ex.fH, "Hz", "kHz", { tol: 0.02, mistakes: [{ value: fH / n, tag: "freq-model", message: "不是简单除以 n：$f_H=f_{H1}\\sqrt{2^{1/n}-1}$。" }] })],
       hints: ["$|A|^n$ 在 $f_H$ 处等于 $1/\\sqrt2$。"],
       solution: `$f_H=${Hz(fH)}\\times\\sqrt{2^{1/${n}}-1}=${Hz(ex.fH)}$。`,
     };
@@ -389,7 +392,15 @@ const multiQ: QuestionTemplate[] = [
     const db = A.reduce((s, x) => s + 20 * Math.log10(x), 0);
     return {
       prompt: `三级放大电路中频增益分别为 ${A.join("、")} 倍。总增益为多少 dB？`,
-      parts: [num("d", "总增益（dB）", db, "1", "80", { tol: 0.01 })],
+      parts: [
+        num("d", "总增益（dB）", db, "1", "80", {
+          tol: 0.01,
+          mistakes: [
+            { value: 20 * Math.log10(A[0] + A[1] + A[2]), tag: "unit-convert", message: "多级放大的总增益是各级倍数**相乘**（分贝数相加），不是倍数相加。" },
+            { value: A.reduce((s, x) => s + 10 * Math.log10(x), 0), tag: "unit-convert", message: "电压增益的分贝数是 $20\\lg A$，不是 $10\\lg A$。" },
+          ],
+        }),
+      ],
       hints: ["各级 dB 相加。"],
       solution: `${sig(db, 4)} dB。`,
     };
